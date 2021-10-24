@@ -86,7 +86,7 @@ func (c *sqlConnector) Connect(ctx context.Context) (_ driver.Conn, err error) {
 	}
 	return &sqlConn{
 		connector: c,
-		client:    db.Table(),
+		db:        db,
 		txControl: c.txControl,
 		dataOpts:  c.dataOpts,
 		scanOpts:  c.scanOpts,
@@ -97,9 +97,9 @@ func (c *sqlConnector) Driver() driver.Driver {
 	return &sqlDriver{c}
 }
 
-// sqlDriver is an adapter to allow the use table client as sql.sqlDriver instance.
+// sqlDriver is an adapter to allow the use table db as sql.sqlDriver instance.
 // The main purpose of this types is exported is an ability to call Unwrap()
-// method on it to receive raw *table.client instance.
+// method on it to receive raw *table.db instance.
 type sqlDriver struct {
 	c *sqlConnector
 }

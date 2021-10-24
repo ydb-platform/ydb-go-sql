@@ -58,7 +58,7 @@ func (d *ydbWrapper) UnmarshalYDB(res types.RawValue) error {
 // sqlConn is a connection to the ydb.
 type sqlConn struct {
 	connector *sqlConnector // Immutable and r/o usage.
-	client    table.Client
+	db        ydb.Connection
 
 	txControl *table.TransactionControl
 	dataOpts  []options.ExecuteDataQueryOption
@@ -151,7 +151,7 @@ func (c *sqlConn) BeginTx(ctx context.Context, opts driver.TxOptions) (tx driver
 		return nil, err
 	}
 	if isolation != nil {
-		err = c.client.Do(ctx, func(ctx context.Context, s table.Session) (err error) {
+		err = c.db.Table().Do(ctx, func(ctx context.Context, s table.Session) (err error) {
 			c.tx, err = s.BeginTransaction(ctx, table.TxSettings(isolation))
 			return err
 		})
@@ -236,7 +236,7 @@ func (c *sqlConn) CheckNamedValue(v *driver.NamedValue) error {
 }
 
 func (c *sqlConn) Ping(ctx context.Context) error {
-	return c.client.Do(
+	return c.db.Table().Do(
 		ctx,
 		func(ctx context.Context, s table.Session) (err error) {
 			return s.KeepAlive(ctx)
@@ -245,7 +245,7 @@ func (c *sqlConn) Ping(ctx context.Context) error {
 }
 
 func (c *sqlConn) Close() error {
-	return c.client.Close(context.Background())
+	return c.db.Close(context.Background())
 }
 
 func (c *sqlConn) Prepare(string) (driver.Stmt, error) {
@@ -257,7 +257,7 @@ func (c *sqlConn) Begin() (driver.Tx, error) {
 }
 
 func (c *sqlConn) exec(ctx context.Context, req processor, params *table.QueryParameters) (res resultset.Result, err error) {
-	err = c.client.Do(
+	err = c.db.Table().Do(
 		ctx,
 		func(ctx context.Context, session table.Session) (err error) {
 			res, err = req.process(ctx, c, params)
@@ -285,7 +285,7 @@ type reqQuery struct {
 }
 
 func (o *reqQuery) process(ctx context.Context, c *sqlConn, params *table.QueryParameters) (res resultset.Result, err error) {
-	err = c.client.Do(ctx, func(ctx context.Context, s table.Session) (err error) {
+	err = c.db.Table().Do(ctx, func(ctx context.Context, s table.Session) (err error) {
 		_, res, err = s.Execute(ctx, c.txControl, o.text, params, c.dataOpts...)
 		return err
 	})
@@ -300,7 +300,7 @@ type reqScanQuery struct {
 }
 
 func (o *reqScanQuery) process(ctx context.Context, c *sqlConn, params *table.QueryParameters) (res resultset.Result, err error) {
-	err = c.client.Do(ctx, func(ctx context.Context, s table.Session) (err error) {
+	err = c.db.Table().Do(ctx, func(ctx context.Context, s table.Session) (err error) {
 		res, err = s.StreamExecuteScanQuery(ctx, o.text, params, c.scanOpts...)
 		return err
 	})
@@ -429,7 +429,7 @@ func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driv
 
 func (s *stmt) queryContext(ctx context.Context, args []driver.NamedValue) (_ driver.Rows, err error) {
 	var res resultset.Result
-	err = s.conn.client.Do(
+	err = s.conn.db.Table().Do(
 		ctx,
 		func(ctx context.Context, session table.Session) (err error) {
 			_, res, err = session.Execute(ctx, s.conn.txControl, s.query, params(args), s.conn.dataOpts...)
@@ -445,7 +445,7 @@ func (s *stmt) queryContext(ctx context.Context, args []driver.NamedValue) (_ dr
 
 func (s *stmt) scanQueryContext(ctx context.Context, args []driver.NamedValue) (_ driver.Rows, err error) {
 	var res resultset.Result
-	err = s.conn.client.Do(
+	err = s.conn.db.Table().Do(
 		ctx,
 		func(ctx context.Context, session table.Session) (err error) {
 			res, err = session.StreamExecuteScanQuery(ctx, s.query, params(args), s.conn.scanOpts...)

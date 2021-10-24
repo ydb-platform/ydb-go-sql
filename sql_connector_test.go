@@ -10,7 +10,6 @@ import (
 
 	"github.com/ydb-platform/ydb-go-sdk/v3"
 	"github.com/ydb-platform/ydb-go-sdk/v3/config"
-	"github.com/ydb-platform/ydb-go-sdk/v3/internal/meta/credentials"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
 )
 
@@ -25,15 +24,13 @@ func TestConnectorDialOnPing(t *testing.T) {
 	dialCh := make(chan struct{})
 	c, err := Connector(
 		With(
-			ydb.With(
-				config.WithEndpoint("127.0.0.1:9999"),
-				config.WithCredentials(credentials.NewAnonymousCredentials("TestConnectorDialOnPing")),
-				config.WithDiscoveryInterval(time.Second),
-				config.WithNetDial(func(_ context.Context, addr string) (net.Conn, error) {
-					dialCh <- struct{}{}
-					return client, nil
-				}),
-			),
+			ydb.WithConnectionString("grpc://127.0.0.1:9999?database=/test"),
+			ydb.WithAnonymousCredentials(),
+			ydb.WithDiscoveryInterval(time.Second),
+			ydb.With(config.WithNetDial(func(_ context.Context, addr string) (net.Conn, error) {
+				dialCh <- struct{}{}
+				return client, nil
+			})),
 		),
 	)
 
@@ -74,21 +71,19 @@ func TestConnectorRedialOnError(t *testing.T) {
 	dialFlag := false
 	c, err := Connector(
 		With(
-			ydb.With(
-				config.WithEndpoint("127.0.0.1:9999"),
-				config.WithCredentials(credentials.NewAnonymousCredentials("TestConnectorRedialOnError")),
-				config.WithDiscoveryInterval(time.Second),
-				config.WithNetDial(func(_ context.Context, addr string) (net.Conn, error) {
-					dialFlag = true
-					select {
-					case <-success:
-						// it will still fails on grpc dial
-						return client, nil
-					default:
-						return nil, errors.New("any error")
-					}
-				}),
-			),
+			ydb.WithConnectionString("grpc://127.0.0.1:9999?database=/test"),
+			ydb.WithAnonymousCredentials(),
+			ydb.WithDiscoveryInterval(time.Second),
+			ydb.With(config.WithNetDial(func(_ context.Context, addr string) (net.Conn, error) {
+				dialFlag = true
+				select {
+				case <-success:
+					// it will still fails on grpc dial
+					return client, nil
+				default:
+					return nil, errors.New("any error")
+				}
+			})),
 		),
 		WithDefaultTxControl(table.TxControl(
 			table.BeginTx(

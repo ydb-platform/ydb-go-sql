@@ -78,11 +78,11 @@ Note that database/sql package reuses sql.Conn instances which are wrappers
 around ydb/table.Session instances in case of ydbsql. It could be reasonable to
 increase the number of reused sessions via database/sql.DB.SetMaxIdleConns()
 and database/sql.DB.SetMaxOpenConns() calls. If doing so, it is also highly
-recommended to setup inner session client's size limit to the same value by
+recommended to setup inner session db's size limit to the same value by
 passing WithSessionPoolSizeLimit() option to the Connector() function.
 
 It is worth noting that YDB supports server side operation timeout. That is,
-client could set up operation timeout among other operation options. When this
+db could set up operation timeout among other operation options. When this
 timeout exceeds, YDB will try to cancel operation execution and in any result
 of the cancelation appropriate timeout error will be returned. By default, this
 package "mirrors" deadline.Context deadlines and passes operation timeout option
