@@ -5,9 +5,7 @@ import (
 	"database/sql/driver"
 	"github.com/ydb-platform/ydb-go-sdk/v3"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/config"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
-	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
 )
 
 type sqlOption func(*sqlConnector)
@@ -62,35 +60,22 @@ type sqlConnector struct {
 }
 
 func (c *sqlConnector) Connect(ctx context.Context) (_ driver.Conn, err error) {
-	var db ydb.Connection
-	db, err = ydb.New(
+	conn := &sqlConn{
+		connector: c,
+		txControl: c.txControl,
+		dataOpts:  c.dataOpts,
+		scanOpts:  c.scanOpts,
+	}
+	conn.db, err = ydb.New(
 		ctx,
 		append(
 			c.options,
-			ydb.WithTableConfigOption(
-				config.WithTrace(
-					trace.Table{
-						OnPoolClose: func(info trace.PoolCloseStartInfo) func(trace.PoolCloseDoneInfo) {
-							closeCtx := info.Context
-							return func(info trace.PoolCloseDoneInfo) {
-								go db.Close(closeCtx)
-							}
-						},
-					},
-				),
-			),
 		)...,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return &sqlConn{
-		connector: c,
-		db:        db,
-		txControl: c.txControl,
-		dataOpts:  c.dataOpts,
-		scanOpts:  c.scanOpts,
-	}, nil
+	return conn, nil
 }
 
 func (c *sqlConnector) Driver() driver.Driver {
