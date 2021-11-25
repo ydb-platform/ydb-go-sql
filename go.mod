@@ -8,4 +8,4 @@ require (
 	google.golang.org/protobuf v1.26.0
 )
 
-//replace github.com/ydb-platform/ydb-go-sdk/v3 => ../ydb-go-sdk-private
+replace github.com/ydb-platform/ydb-go-sdk/v3 => ../ydb-go-sdk-private
