@@ -1,3 +1,3 @@
 ## 0.0.1
-* Implements database/sql driver
-* Supports scheme, scan and data queries, explain
+* Implements database/sql driver with DML and DDL queries
+* Supports scheme, explain, scan and data queries
