@@ -49,6 +49,9 @@ func TestDriverSelect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !res.NextResultSet() {
+		t.Fatal("nothing result sets")
+	}
 	if !res.Next() {
 		t.Fatal("nothing rows in set")
 	}
