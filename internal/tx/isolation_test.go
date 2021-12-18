@@ -5,10 +5,7 @@ import (
 	"database/sql/driver"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/ydb-platform/ydb-go-genproto/protos/Ydb_Table"
 
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
 )
@@ -114,7 +111,7 @@ func TestIsolationMapping(t *testing.T) {
 			if test.txExp != nil {
 				sExp = table.TxSettings(test.txExp)
 			}
-			if !cmp.Equal(sAct, sExp, cmp.Comparer(proto.Equal), cmp.AllowUnexported(Ydb_Table.TransactionSettings{})) {
+			if !proto.Equal(sAct.Settings(), sExp.Settings()) {
 				t.Fatalf("unexpected tx settings: %+v; want %+v", sAct, sExp)
 			}
 
@@ -125,7 +122,7 @@ func TestIsolationMapping(t *testing.T) {
 			if test.txcExp != nil {
 				cExp = table.TxControl(test.txcExp...)
 			}
-			if !cmp.Equal(sAct, sExp, cmp.Comparer(proto.Equal), cmp.AllowUnexported(table.TransactionSettings{}, Ydb_Table.TransactionSettings{})) {
+			if !proto.Equal(cAct.Desc(), cExp.Desc()) {
 				t.Fatalf("unexpected settings: %+v; want %+v", cAct, cExp)
 			}
 		})
