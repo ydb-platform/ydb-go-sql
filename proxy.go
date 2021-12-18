@@ -2,6 +2,7 @@ package ydb
 
 import (
 	"database/sql/driver"
+	"time"
 
 	"github.com/ydb-platform/ydb-go-sdk/v3"
 	"github.com/ydb-platform/ydb-go-sdk/v3/config"
@@ -26,6 +27,10 @@ func With(opts ...config.Option) connector.Option {
 
 func WithConnectionString(connection string) connector.Option {
 	return connector.WithConnectionString(connection)
+}
+
+func WithDiscoveryInterval(discoveryInterval time.Duration) connector.Option {
+	return connector.WithDiscoveryInterval(discoveryInterval)
 }
 
 func WithEndpoint(endpoint string) connector.Option {

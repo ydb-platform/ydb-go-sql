@@ -4,23 +4,14 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"fmt"
-	"io"
 	"log"
 	"os"
 	"testing"
 	"text/template"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/anypb"
-
-	"github.com/ydb-platform/ydb-go-genproto/protos/Ydb_Table"
-
-	"github.com/ydb-platform/ydb-go-sdk/v3/config"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
-	"github.com/ydb-platform/ydb-go-sdk/v3/testutil"
 	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
 
 	"github.com/ydb-platform/ydb-go-sql"
@@ -58,152 +49,194 @@ func TestLegacyDriverOpen(t *testing.T) {
 	}
 }
 
-func TestQuery(t *testing.T) {
-	c := ydb.Connector(
-		ydb.With(
-			config.WithGrpcOptions(
-				grpc.WithChainUnaryInterceptor(func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
-					switch m := testutil.Method(method).Code(); m {
-					case testutil.TableCreateSession:
-						r, ok := (reply).(*Ydb_Table.CreateSessionResponse)
-						if !ok {
-							t.Fatalf("Unexpected response type %T", reply)
-						}
-						r.Operation.Result, err = anypb.New(
-							&Ydb_Table.CreateSessionResult{
-								SessionId: testutil.SessionID(),
-							},
-						)
-						return err
-					case testutil.TableExecuteDataQuery:
-						{
-							_, ok := (req).(*Ydb_Table.ExecuteDataQueryRequest)
-							if !ok {
-								t.Fatalf("Unexpected request type %T", req)
-							}
-						}
-						{
-							r, ok := (reply).(*Ydb_Table.ExecuteDataQueryResponse)
-							if !ok {
-								t.Fatalf("Unexpected response type %T", reply)
-							}
-							r.Operation.Result, err = anypb.New(
-								&Ydb_Table.ExecuteQueryResult{
-									TxMeta: &Ydb_Table.TransactionMeta{
-										Id: "",
-									},
-								},
-							)
-							if err != nil {
-								t.Fatalf("any proto failed: %v", err)
-							}
-							return nil
-						}
-					default:
-						t.Fatalf("Unexpected method %d", m)
-					}
-					return nil
-				}),
-				grpc.WithChainStreamInterceptor(func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-					switch m := testutil.Method(method).Code(); m {
-					case testutil.TableStreamExecuteScanQuery:
-						return nil, io.EOF
-					default:
-						t.Fatalf("Unexpected method %d", m)
-					}
-					return nil, fmt.Errorf("unexpected method %s", method)
-				}),
-			),
-		),
-		ydb.WithDefaultExecDataQueryOption(),
-	)
-
-	for _, test := range [...]struct {
-		subName       string
-		scanQueryMode bool
-	}{
-		{
-			subName:       "Legacy",
-			scanQueryMode: false,
-		},
-		{
-			subName:       "WithScanQuery",
-			scanQueryMode: true,
-		},
-	} {
-		t.Run("QueryContext/Conn/"+test.subName, func(t *testing.T) {
-			db := sql.OpenDB(c)
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-			defer cancel()
-			if test.scanQueryMode {
-				ctx = ydb.WithScanQuery(ctx)
-			}
-			rows, err := db.QueryContext(ctx, "SELECT 1")
-			if err != nil {
-				t.Fatalf("query failed: %v", err)
-			}
-			if rows == nil {
-				t.Fatal("query failed: nil rows")
-			}
-		})
-		t.Run("QueryContext/STMT/"+test.subName, func(t *testing.T) {
-			db := sql.OpenDB(c)
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-			defer cancel()
-			stmt, err := db.PrepareContext(ctx, "SELECT 1")
-			if err != nil {
-				t.Fatalf("prepare failed: %v", err)
-			}
-			defer stmt.Close()
-			if test.scanQueryMode {
-				ctx = ydb.WithScanQuery(ctx)
-			}
-			rows, err := stmt.QueryContext(ctx)
-			if err != nil {
-				t.Fatalf("query failed: %v", err)
-			}
-			if rows == nil {
-				t.Fatal("query failed: nil rows")
-			}
-		})
-		t.Run("ExecContext/Conn/"+test.subName, func(t *testing.T) {
-			db := sql.OpenDB(c)
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-			defer cancel()
-			if test.scanQueryMode {
-				ctx = ydb.WithScanQuery(ctx)
-			}
-			rows, err := db.ExecContext(ctx, "SELECT 1")
-			if err != nil {
-				t.Fatalf("query failed: %v", err)
-			}
-			if rows == nil {
-				t.Fatal("query failed: nil rows")
-			}
-		})
-		t.Run("ExecContext/STMT/"+test.subName, func(t *testing.T) {
-			db := sql.OpenDB(c)
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-			defer cancel()
-			stmt, err := db.PrepareContext(ctx, "SELECT 1")
-			if err != nil {
-				t.Fatalf("prepare failed: %v", err)
-			}
-			defer stmt.Close()
-			if test.scanQueryMode {
-				ctx = ydb.WithScanQuery(ctx)
-			}
-			rows, err := stmt.ExecContext(ctx)
-			if err != nil {
-				t.Fatalf("stmt exec failed: %v", err)
-			}
-			if rows == nil {
-				t.Fatal("stmt exec failed: nil rows")
-			}
-		})
-	}
-}
-
+//func TestQuery(t *testing.T) {
+//	c := ydb.Connector(
+//		ydb.WithConnectionString(os.Getenv("YDB_CONNECTION_STRING")),
+//		ydb.WithDiscoveryInterval(0),
+//		ydb.With(
+//			config.WithGrpcOptions(
+//				grpc.WithChainUnaryInterceptor(func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+//					switch m := testutil.Method(method).Code(); m {
+//					case testutil.TableCreateSession:
+//						r, ok := (reply).(*Ydb_Table.CreateSessionResponse)
+//						if !ok {
+//							t.Fatalf("Unexpected response type %T", reply)
+//						}
+//						result, err := anypb.New(
+//							&Ydb_Table.CreateSessionResult{
+//								SessionId: testutil.SessionID(),
+//							},
+//						)
+//						if err != nil {
+//							return err
+//						}
+//						r.Operation = &Ydb_Operations.Operation{
+//							Status: Ydb.StatusIds_SUCCESS,
+//							Result: result,
+//							Ready:  true,
+//						}
+//						return nil
+//					case testutil.TableExecuteDataQuery:
+//						{
+//							_, ok := (req).(*Ydb_Table.ExecuteDataQueryRequest)
+//							if !ok {
+//								t.Fatalf("Unexpected request type %T", req)
+//							}
+//						}
+//						{
+//							r, ok := (reply).(*Ydb_Table.ExecuteDataQueryResponse)
+//							if !ok {
+//								t.Fatalf("Unexpected response type %T", reply)
+//							}
+//							result, err := anypb.New(
+//								&Ydb_Table.ExecuteQueryResult{
+//									TxMeta: &Ydb_Table.TransactionMeta{
+//										Id: "",
+//									},
+//								},
+//							)
+//							if err != nil {
+//								return err
+//							}
+//							r.Operation = &Ydb_Operations.Operation{
+//								Status: Ydb.StatusIds_SUCCESS,
+//								Result: result,
+//								Ready:  true,
+//							}
+//							return nil
+//						}
+//					case testutil.TablePrepareDataQuery:
+//						{
+//							_, ok := (req).(*Ydb_Table.PrepareDataQueryRequest)
+//							if !ok {
+//								t.Fatalf("Unexpected request type %T", req)
+//							}
+//						}
+//						{
+//							r, ok := (reply).(*Ydb_Table.PrepareDataQueryResponse)
+//							if !ok {
+//								t.Fatalf("Unexpected response type %T", reply)
+//							}
+//							result, err := anypb.New(
+//								&Ydb_Table.PrepareQueryResult{
+//									QueryId: "",
+//								},
+//							)
+//							if err != nil {
+//								return err
+//							}
+//							r.Operation = &Ydb_Operations.Operation{
+//								Status: Ydb.StatusIds_SUCCESS,
+//								Result: result,
+//								Ready:  true,
+//							}
+//							return nil
+//						}
+//					default:
+//						t.Fatalf("Unexpected method %s (request '%T', response '%T')", method, req, reply)
+//					}
+//					return nil
+//				}),
+//				grpc.WithChainStreamInterceptor(func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+//					switch m := testutil.Method(method).Code(); m {
+//					case testutil.TableStreamExecuteScanQuery:
+//						return nil, io.EOF
+//					default:
+//						t.Fatalf("Unexpected method %d", m)
+//					}
+//					return nil, fmt.Errorf("unexpected method %s", method)
+//				}),
+//			),
+//		),
+//		ydb.WithDefaultExecDataQueryOption(),
+//	)
+//
+//	for _, test := range [...]struct {
+//		subName       string
+//		scanQueryMode bool
+//	}{
+//		{
+//			subName:       "Legacy",
+//			scanQueryMode: false,
+//		},
+//		{
+//			subName:       "WithScanQuery",
+//			scanQueryMode: true,
+//		},
+//	} {
+//		t.Run("QueryContext/Conn/"+test.subName, func(t *testing.T) {
+//			db := sql.OpenDB(c)
+//			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+//			defer cancel()
+//			if test.scanQueryMode {
+//				ctx = ydb.WithScanQuery(ctx)
+//			}
+//			rows, err := db.QueryContext(ctx, "SELECT 1")
+//			if err != nil {
+//				t.Fatalf("query failed: %v", err)
+//			}
+//			if rows == nil {
+//				t.Fatal("query failed: nil rows")
+//			}
+//		})
+//		t.Run("QueryContext/STMT/"+test.subName, func(t *testing.T) {
+//			db := sql.OpenDB(c)
+//			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+//			defer cancel()
+//			stmt, err := db.PrepareContext(ctx, "SELECT 1")
+//			if err != nil {
+//				t.Fatalf("prepare failed: %v", err)
+//			}
+//			defer stmt.Close()
+//			if test.scanQueryMode {
+//				ctx = ydb.WithScanQuery(ctx)
+//			}
+//			rows, err := stmt.QueryContext(ctx)
+//			if err != nil {
+//				t.Fatalf("query failed: %v", err)
+//			}
+//			if rows == nil {
+//				t.Fatal("query failed: nil rows")
+//			}
+//		})
+//		t.Run("ExecContext/Conn/"+test.subName, func(t *testing.T) {
+//			db := sql.OpenDB(c)
+//			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+//			defer cancel()
+//			if test.scanQueryMode {
+//				ctx = ydb.WithScanQuery(ctx)
+//			}
+//			rows, err := db.ExecContext(ctx, "SELECT 1")
+//			if err != nil {
+//				t.Fatalf("query failed: %v", err)
+//			}
+//			if rows == nil {
+//				t.Fatal("query failed: nil rows")
+//			}
+//		})
+//		t.Run("ExecContext/STMT/"+test.subName, func(t *testing.T) {
+//			db := sql.OpenDB(c)
+//			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+//			defer cancel()
+//			stmt, err := db.PrepareContext(ctx, "SELECT 1")
+//			if err != nil {
+//				t.Fatalf("prepare failed: %v", err)
+//			}
+//			defer stmt.Close()
+//			if test.scanQueryMode {
+//				ctx = ydb.WithScanQuery(ctx)
+//			}
+//			rows, err := stmt.ExecContext(ctx)
+//			if err != nil {
+//				t.Fatalf("stmt exec failed: %v", err)
+//			}
+//			if rows == nil {
+//				t.Fatal("stmt exec failed: nil rows")
+//			}
+//		})
+//	}
+//}
+//
 func TestDatabaseSelect(t *testing.T) {
 	for _, test := range []struct {
 		query  string

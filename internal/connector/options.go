@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"net"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -30,6 +31,12 @@ func withNetDial(netDial func(ctx context.Context, address string) (conn net.Con
 func WithConnectionString(connection string) Option {
 	return func(c *connector) {
 		c.options = append(c.options, ydb.WithConnectionString(connection))
+	}
+}
+
+func WithDiscoveryInterval(discoveryInterval time.Duration) Option {
+	return func(c *connector) {
+		c.options = append(c.options, ydb.WithDiscoveryInterval(discoveryInterval))
 	}
 }
 
