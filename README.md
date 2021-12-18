@@ -1,5 +1,15 @@
 # Go database/sql driver for YDB
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/ydb-platform/ydb-go-sql)](https://pkg.go.dev/github.com/ydb-platform/ydb-go-sql)
+[![GoDoc](https://godoc.org/github.com/ydb-platform/ydb-go-sql?status.svg)](https://godoc.org/github.com/ydb-platform/ydb-go-sql)
+![tests](https://github.com/ydb-platform/ydb-go-sql/workflows/tests/badge.svg?branch=master)
+![lint](https://github.com/ydb-platform/ydb-go-sql/workflows/lint/badge.svg?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ydb-platform/ydb-go-sql)](https://goreportcard.com/report/github.com/ydb-platform/ydb-go-sql)
+[![codecov](https://codecov.io/gh/ydb-platform/ydb-go-sql/branch/master/graph/badge.svg)](https://app.codecov.io/gh/ydb-platform/ydb-go-sql)
+
+[godoc](https://godoc.org/github.com/ydb-platform/ydb-go-sql/)
+
+
 This is an experimental version of Go database/sql driver for YDB. 
 It is in active development and is not intended for use in production environments.
 
