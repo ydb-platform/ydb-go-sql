@@ -23,9 +23,6 @@ func TestLegacyDriverOpen(t *testing.T) {
 }
 
 func TestDriverSelect(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping testing in non-short mode")
-	}
 	var (
 		driverTrace trace.Driver
 		tableTrace  trace.Table

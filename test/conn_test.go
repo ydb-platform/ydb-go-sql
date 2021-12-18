@@ -202,10 +202,6 @@ func TestQuery(t *testing.T) {
 }
 
 func TestDatabaseSelect(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping testing in short mode")
-	}
-
 	for _, test := range []struct {
 		query  string
 		params []interface{}
@@ -278,10 +274,6 @@ func TestStatement(t *testing.T) {
 }
 
 func TestTx(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping testing in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
@@ -332,20 +324,21 @@ func TestDriver(t *testing.T) {
 	}
 	defer db.Close()
 
-	rows, err := db.QueryContext(ctx, `
-		DECLARE $seriesData AS "List<Struct<
-			series_id: Uint64,
-			title: Utf8,
-			series_info: Utf8,
-			release_date: Date>>";
-
-		SELECT
-			series_id,
-			title,
-			series_info,
-			release_date
-		FROM AS_TABLE($seriesData);
-	`,
+	rows, err := db.QueryContext(
+		ctx, `
+			DECLARE $seriesData AS List<Struct<
+				series_id: Uint64,
+				title: Utf8,
+				series_info: Utf8,
+				release_date: Date>>;
+	
+			SELECT
+				series_id,
+				title,
+				series_info,
+				release_date
+			FROM AS_TABLE($seriesData);
+		`,
 		sql.Named("seriesData", getSeriesData()),
 	)
 	if err != nil {
