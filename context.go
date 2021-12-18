@@ -2,16 +2,27 @@ package ydb
 
 import (
 	"context"
+	"github.com/ydb-platform/ydb-go-sdk/v3/table"
+	"github.com/ydb-platform/ydb-go-sql/internal/mode"
+	"github.com/ydb-platform/ydb-go-sql/internal/x"
 )
 
-type ctxScanQueryKey struct{}
-
-// WithScanQuery returns a copy of parent context with scan query flag.
 func WithScanQuery(ctx context.Context) context.Context {
-	return context.WithValue(ctx, ctxScanQueryKey{}, struct{}{})
+	return x.WithQueryMode(ctx, mode.ScanQuery)
 }
 
-// ContextScanQueryMode returns true if context contains scan query flag.
-func ContextScanQueryMode(ctx context.Context) bool {
-	return ctx.Value(ctxScanQueryKey{}) != nil
+func WithDataQuery(ctx context.Context) context.Context {
+	return x.WithQueryMode(ctx, mode.DataQuery)
+}
+
+func WithSchemeQuery(ctx context.Context) context.Context {
+	return x.WithQueryMode(ctx, mode.SchemeQuery)
+}
+
+func WithExplain(ctx context.Context) context.Context {
+	return x.WithQueryMode(ctx, mode.ExplainQuery)
+}
+
+func WithTxControl(ctx context.Context, tx *table.TransactionControl) context.Context {
+	return x.WithTxControl(ctx, tx)
 }

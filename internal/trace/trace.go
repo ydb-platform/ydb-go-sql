@@ -1,4 +1,4 @@
-package ydb
+package trace
 
 //go:generate gtrace
 
