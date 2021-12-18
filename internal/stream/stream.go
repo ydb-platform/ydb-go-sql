@@ -8,9 +8,10 @@ import (
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/result"
 
-	"github.com/ydb-platform/ydb-go-sql/internal/ydb2sql"
+	"github.com/ydb-platform/ydb-go-sql/internal/x"
 )
 
+// Rows is an aggregate interface which returns from stream.Result()
 type Rows interface {
 	driver.Rows
 }
@@ -20,6 +21,7 @@ type rows struct {
 	ctx context.Context
 }
 
+// Result returns Rows interface based on result.StreamResult
 func Result(
 	ctx context.Context,
 	res result.StreamResult,
@@ -46,13 +48,13 @@ func (r *rows) Next(dst []driver.Value) (err error) {
 	}
 	values := make([]interface{}, len(dst))
 	for i := range dst {
-		values[i] = ydb2sql.New()
+		values[i] = x.V()
 	}
 	if err = r.res.Scan(values...); err != nil {
 		return err
 	}
 	for i := range values {
-		s := values[i].(ydb2sql.Valuer)
+		s := values[i].(x.Valuer)
 		dst[i] = s.Value()
 	}
 	return r.res.Err()

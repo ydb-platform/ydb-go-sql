@@ -9,9 +9,10 @@ import (
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/result"
 
 	"github.com/ydb-platform/ydb-go-sql/internal/errors"
-	"github.com/ydb-platform/ydb-go-sql/internal/ydb2sql"
+	"github.com/ydb-platform/ydb-go-sql/internal/x"
 )
 
+// Rows is an aggregate interface which returns from rows.Result()
 type Rows interface {
 	driver.Rows
 	driver.RowsNextResultSet
@@ -21,6 +22,7 @@ type rows struct {
 	res result.Result
 }
 
+// Result returns Rows interface based on result.Result
 func Result(res result.Result) Rows {
 	return &rows{
 		res: res,
@@ -57,13 +59,13 @@ func (r *rows) Next(dst []driver.Value) (err error) {
 	}
 	values := make([]interface{}, len(dst))
 	for i := range dst {
-		values[i] = ydb2sql.New()
+		values[i] = x.V()
 	}
 	if err = r.res.Scan(values...); err != nil {
 		return err
 	}
 	for i := range values {
-		s := values[i].(ydb2sql.Valuer)
+		s := values[i].(x.Valuer)
 		dst[i] = s.Value()
 	}
 	return r.res.Err()
