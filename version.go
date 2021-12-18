@@ -8,4 +8,4 @@ import (
 
 const Version = "ydb-go-sql/0.0.1"
 
-const Versions = Version + "," + ydb.Version + ",grpc/" + grpc.Version
+const Versions = "[" + Version + "," + ydb.Version + ",grpc/" + grpc.Version + "]"
