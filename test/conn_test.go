@@ -332,13 +332,6 @@ func TestDriver(t *testing.T) {
 	}
 	if _, err = db.ExecContext(
 		ydb.WithSchemeQuery(ctx), `
-			DROP TABLE series;
-		`,
-	); err != nil {
-		panic(err)
-	}
-	if _, err = db.ExecContext(
-		ydb.WithSchemeQuery(ctx), `
 			CREATE TABLE series
 			(
 				series_id Uint64,
@@ -354,13 +347,6 @@ func TestDriver(t *testing.T) {
 	}
 	if _, err = db.ExecContext(
 		ydb.WithSchemeQuery(ctx), `
-			DROP TABLE seasons;
-		`,
-	); err != nil {
-		panic(err)
-	}
-	if _, err = db.ExecContext(
-		ydb.WithSchemeQuery(ctx), `
 			CREATE TABLE seasons
 			(
 				series_id Uint64,
@@ -370,13 +356,6 @@ func TestDriver(t *testing.T) {
 				title Utf8,
 				PRIMARY KEY (series_id, season_id)
 			);
-		`,
-	); err != nil {
-		panic(err)
-	}
-	if _, err = db.ExecContext(
-		ydb.WithSchemeQuery(ctx), `
-			DROP TABLE episodes;
 		`,
 	); err != nil {
 		panic(err)
