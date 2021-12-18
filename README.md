@@ -43,7 +43,7 @@ import (
     _ "github.com/ydb-platform/ydb-go-sql" // for "ydb" conn driver registration.
 )
 func main() {
-    db, err := sql.Open("ydb", "ydb://endpoint/database?auth-token=secret")
+    db, err := sql.Open("ydb", "grpc[s]://{endpoint}/?database={database}&token={token}")
 }
 ```
 
