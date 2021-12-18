@@ -72,6 +72,7 @@ func TestConnectorRedialOnError(t *testing.T) {
 	c := New(
 		nil,
 		WithEndpoint("127.0.0.1:9999"),
+		WithDatabase("/local"),
 		withNetDial(func(_ context.Context, addr string) (net.Conn, error) {
 			dial = true
 			select {
