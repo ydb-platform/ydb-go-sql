@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
+
 	"github.com/ydb-platform/ydb-go-sql/internal/errors"
 	"github.com/ydb-platform/ydb-go-sql/internal/mode"
 	"github.com/ydb-platform/ydb-go-sql/internal/rows"

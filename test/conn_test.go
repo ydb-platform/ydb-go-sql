@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/anypb"
 
@@ -21,8 +20,7 @@ import (
 	"github.com/ydb-platform/ydb-go-sdk/v3/testutil"
 	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
 
-	"github.com/ydb-platform/ydb-go-sql/internal/stream"
-	"github.com/ydb-platform/ydb-go-sql/internal/x"
+	"github.com/ydb-platform/ydb-go-sql"
 )
 
 func openDB(ctx context.Context) (*sql.DB, error) {
@@ -37,19 +35,29 @@ func openDB(ctx context.Context) (*sql.DB, error) {
 		log.Printf("[client] %s: %+v", name, trace.ClearContext(args))
 	})
 
-	db := sql.OpenDB(stream.Result(
-		x.WithConnectionString(os.Getenv("YDB_CONNECTION_STRING")),
-		WithAnonymousCredentials(),
-		WithTraceDriver(dtrace),
-		WithTraceTable(ctrace),
+	db := sql.OpenDB(ydb.Connector(
+		ydb.WithConnectionString(os.Getenv("YDB_CONNECTION_STRING")),
+		ydb.WithAnonymousCredentials(),
+		ydb.WithTraceDriver(dtrace),
+		ydb.WithTraceTable(ctrace),
 	))
 
 	return db, db.PingContext(ctx)
 }
 
+func TestLegacyDriverOpen(t *testing.T) {
+	db, err := sql.Open("ydb", os.Getenv("YDB_CONNECTION_STRING"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Ping(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestQuery(t *testing.T) {
-	c := stream.Result(
-		With(
+	c := ydb.Connector(
+		ydb.With(
 			config.WithGrpcOptions(
 				grpc.WithChainUnaryInterceptor(func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
 					switch m := testutil.Method(method).Code(); m {
@@ -63,7 +71,7 @@ func TestQuery(t *testing.T) {
 								SessionId: testutil.SessionID(),
 							},
 						)
-						return nil
+						return err
 					case testutil.TableExecuteDataQuery:
 						{
 							_, ok := (req).(*Ydb_Table.ExecuteDataQueryRequest)
@@ -104,7 +112,7 @@ func TestQuery(t *testing.T) {
 				}),
 			),
 		),
-		WithDefaultExecDataQueryOption(),
+		ydb.WithDefaultExecDataQueryOption(),
 	)
 
 	for _, test := range [...]struct {
@@ -125,50 +133,70 @@ func TestQuery(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 			defer cancel()
 			if test.scanQueryMode {
-				ctx = WithScanQuery(ctx)
+				ctx = ydb.WithScanQuery(ctx)
 			}
 			rows, err := db.QueryContext(ctx, "SELECT 1")
-			require.NoError(t, err)
-			require.NotNil(t, rows)
+			if err != nil {
+				t.Fatalf("query failed: %v", err)
+			}
+			if rows == nil {
+				t.Fatal("query failed: nil rows")
+			}
 		})
 		t.Run("QueryContext/STMT/"+test.subName, func(t *testing.T) {
 			db := sql.OpenDB(c)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 			defer cancel()
 			stmt, err := db.PrepareContext(ctx, "SELECT 1")
-			require.NoError(t, err)
+			if err != nil {
+				t.Fatalf("prepare failed: %v", err)
+			}
 			defer stmt.Close()
 			if test.scanQueryMode {
-				ctx = WithScanQuery(ctx)
+				ctx = ydb.WithScanQuery(ctx)
 			}
 			rows, err := stmt.QueryContext(ctx)
-			require.NoError(t, err)
-			require.NotNil(t, rows)
+			if err != nil {
+				t.Fatalf("query failed: %v", err)
+			}
+			if rows == nil {
+				t.Fatal("query failed: nil rows")
+			}
 		})
 		t.Run("ExecContext/Conn/"+test.subName, func(t *testing.T) {
 			db := sql.OpenDB(c)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 			defer cancel()
 			if test.scanQueryMode {
-				ctx = WithScanQuery(ctx)
+				ctx = ydb.WithScanQuery(ctx)
 			}
 			rows, err := db.ExecContext(ctx, "SELECT 1")
-			require.NoError(t, err)
-			require.NotNil(t, rows)
+			if err != nil {
+				t.Fatalf("query failed: %v", err)
+			}
+			if rows == nil {
+				t.Fatal("query failed: nil rows")
+			}
 		})
 		t.Run("ExecContext/STMT/"+test.subName, func(t *testing.T) {
 			db := sql.OpenDB(c)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 			defer cancel()
 			stmt, err := db.PrepareContext(ctx, "SELECT 1")
-			require.NoError(t, err)
+			if err != nil {
+				t.Fatalf("prepare failed: %v", err)
+			}
 			defer stmt.Close()
 			if test.scanQueryMode {
-				ctx = WithScanQuery(ctx)
+				ctx = ydb.WithScanQuery(ctx)
 			}
 			rows, err := stmt.ExecContext(ctx)
-			require.NoError(t, err)
-			require.NotNil(t, rows)
+			if err != nil {
+				t.Fatalf("stmt exec failed: %v", err)
+			}
+			if rows == nil {
+				t.Fatal("stmt exec failed: nil rows")
+			}
 		})
 	}
 }
@@ -339,7 +367,7 @@ func TestDriver(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		log.Printf("test: #%d %q %q %s", seriesID, title, seriesInfo, time.Time(releaseDate))
+		log.Printf("test: #%d %q %q %s", seriesID, title, seriesInfo, releaseDate)
 	}
 	log.Println("rows err", rows.Err())
 

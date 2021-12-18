@@ -24,7 +24,7 @@ func (t Type) String() string {
 	case ExplainQuery:
 		return "explain_query"
 	case SchemeQuery:
-		return "explain_query"
+		return "scheme_query"
 	default:
 		return fmt.Sprintf("unknown_query_mode_%d", t)
 	}

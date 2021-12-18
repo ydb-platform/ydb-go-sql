@@ -4,17 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/ydb-platform/ydb-go-genproto/protos/Ydb_Table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/config"
-	"github.com/ydb-platform/ydb-go-sdk/v3/testutil"
-	"github.com/ydb-platform/ydb-go-sql/internal/stream"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/anypb"
 	"net"
 	"testing"
 	"time"
 
-	ydb_table_options "github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/anypb"
+
+	"github.com/ydb-platform/ydb-go-genproto/protos/Ydb_Table"
+
+	"github.com/ydb-platform/ydb-go-sdk/v3/config"
+	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	"github.com/ydb-platform/ydb-go-sdk/v3/testutil"
 )
 
 func TestConnectorDialOnPing(t *testing.T) {
@@ -26,7 +27,8 @@ func TestConnectorDialOnPing(t *testing.T) {
 	}()
 
 	dial := make(chan struct{})
-	c := stream.Result(
+	c := New(
+		nil,
 		WithEndpoint("127.0.0.1:9999"),
 		withNetDial(func(_ context.Context, addr string) (net.Conn, error) {
 			dial <- struct{}{}
@@ -66,7 +68,8 @@ func TestConnectorRedialOnError(t *testing.T) {
 	success := make(chan bool, 1)
 
 	dial := false
-	c := stream.Result(
+	c := New(
+		nil,
 		WithEndpoint("127.0.0.1:9999"),
 		withNetDial(func(_ context.Context, addr string) (net.Conn, error) {
 			dial = true
@@ -84,8 +87,9 @@ func TestConnectorRedialOnError(t *testing.T) {
 	db := sql.OpenDB(c)
 	for i := 0; i < 3; i++ {
 		success <- i%2 == 0
-		ctx, _ := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		_ = db.PingContext(ctx)
+		cancel()
 		if !dial {
 			t.Fatalf("no dial on re-ping at %v iteration", i)
 		}
@@ -99,49 +103,49 @@ func TestConnectorWithQueryCachePolicyKeepInCache(t *testing.T) {
 		cacheSize              int
 		prepareCount           int
 		prepareRequestsCount   int
-		queryCachePolicyOption []ydb_table_options.QueryCachePolicyOption
+		queryCachePolicyOption []options.QueryCachePolicyOption
 	}{
 		{
 			name:                   "fixed query cache size, with server cache, one request proxed to server",
 			cacheSize:              10,
 			prepareCount:           10,
 			prepareRequestsCount:   1,
-			queryCachePolicyOption: []ydb_table_options.QueryCachePolicyOption{ydb_table_options.WithQueryCachePolicyKeepInCache()},
+			queryCachePolicyOption: []options.QueryCachePolicyOption{options.WithQueryCachePolicyKeepInCache()},
 		},
 		{
 			name:                   "default query cache size, with server cache, one request proxed to server",
 			cacheSize:              0,
 			prepareCount:           10,
 			prepareRequestsCount:   1,
-			queryCachePolicyOption: []ydb_table_options.QueryCachePolicyOption{ydb_table_options.WithQueryCachePolicyKeepInCache()},
+			queryCachePolicyOption: []options.QueryCachePolicyOption{options.WithQueryCachePolicyKeepInCache()},
 		},
 		{
 			name:                   "disabled query cache, with server cache, all requests proxed to server",
 			cacheSize:              -1,
 			prepareCount:           10,
 			prepareRequestsCount:   10,
-			queryCachePolicyOption: []ydb_table_options.QueryCachePolicyOption{ydb_table_options.WithQueryCachePolicyKeepInCache()},
+			queryCachePolicyOption: []options.QueryCachePolicyOption{options.WithQueryCachePolicyKeepInCache()},
 		},
 		{
 			name:                   "fixed query cache size, no server cache, one request proxed to server",
 			cacheSize:              10,
 			prepareCount:           10,
 			prepareRequestsCount:   1,
-			queryCachePolicyOption: []ydb_table_options.QueryCachePolicyOption{},
+			queryCachePolicyOption: []options.QueryCachePolicyOption{},
 		},
 		{
 			name:                   "default query cache size, no server cache, one request proxed to server",
 			cacheSize:              0,
 			prepareCount:           10,
 			prepareRequestsCount:   1,
-			queryCachePolicyOption: []ydb_table_options.QueryCachePolicyOption{},
+			queryCachePolicyOption: []options.QueryCachePolicyOption{},
 		},
 		{
 			name:                   "disabled query cache, no server cache, all requests proxed to server",
 			cacheSize:              -1,
 			prepareCount:           10,
 			prepareRequestsCount:   10,
-			queryCachePolicyOption: []ydb_table_options.QueryCachePolicyOption{},
+			queryCachePolicyOption: []options.QueryCachePolicyOption{},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -152,7 +156,8 @@ func TestConnectorWithQueryCachePolicyKeepInCache(t *testing.T) {
 			defer func() {
 				_ = server.Close()
 			}()
-			c := stream.Result(
+			c := New(
+				nil,
 				With(
 					config.WithGrpcOptions(
 						grpc.WithChainUnaryInterceptor(func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
@@ -167,7 +172,7 @@ func TestConnectorWithQueryCachePolicyKeepInCache(t *testing.T) {
 										SessionId: testutil.SessionID(),
 									},
 								)
-								return nil
+								return err
 							case testutil.TableExecuteDataQuery:
 								{
 									r, ok := (req).(*Ydb_Table.ExecuteDataQueryRequest)
@@ -210,7 +215,7 @@ func TestConnectorWithQueryCachePolicyKeepInCache(t *testing.T) {
 						}),
 					),
 				),
-				WithDefaultExecDataQueryOption(ydb_table_options.WithQueryCachePolicy(test.queryCachePolicyOption...)),
+				WithDefaultExecDataQueryOption(options.WithQueryCachePolicy(test.queryCachePolicyOption...)),
 			)
 			db := sql.OpenDB(c)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)

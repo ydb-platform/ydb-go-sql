@@ -38,10 +38,12 @@ func New(owner Driver, opts ...Option) Connector {
 	for _, opt := range opts {
 		opt(c)
 	}
-	go func() {
-		<-owner.Done()
-		c.Close(context.Background())
-	}()
+	if owner != nil {
+		go func() {
+			<-owner.Done()
+			c.Close(context.Background())
+		}()
+	}
 	return c
 }
 

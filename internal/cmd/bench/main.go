@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
 	"log"
 	"os"
 	"text/template"
 	"time"
 
+	"github.com/ydb-platform/ydb-go-sdk/v3/table"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 
 	"github.com/ydb-platform/ydb-go-sql"

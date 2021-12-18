@@ -3,11 +3,13 @@ package tx
 import (
 	"database/sql"
 	"database/sql/driver"
-	"google.golang.org/protobuf/proto"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/ydb-platform/ydb-go-genproto/protos/Ydb_Table"
+
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
 )
 

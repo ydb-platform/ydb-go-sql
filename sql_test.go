@@ -3,20 +3,16 @@ package ydb
 import (
 	"context"
 	"database/sql"
-	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
-	"github.com/ydb-platform/ydb-go-sql/internal/connector"
-	"github.com/ydb-platform/ydb-go-sql/internal/stream"
 	"log"
 	"os"
 	"testing"
 
-	_ "github.com/ydb-platform/ydb-go-sql/internal/connector"
+	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
+
+	"github.com/ydb-platform/ydb-go-sql/internal/connector"
 )
 
 func TestLegacyDriverOpen(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping testing in non-short mode")
-	}
 	db, err := sql.Open("ydb", os.Getenv("YDB_CONNECTION_STRING"))
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +37,7 @@ func TestDriverSelect(t *testing.T) {
 		log.Printf("[table] %s: %+v", name, trace.ClearContext(args))
 	})
 
-	db := sql.OpenDB(stream.Result(
+	db := sql.OpenDB(Connector(
 		connector.WithConnectionString(os.Getenv("YDB_CONNECTION_STRING")),
 		connector.WithAnonymousCredentials(),
 		connector.WithTraceDriver(driverTrace),

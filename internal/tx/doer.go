@@ -3,7 +3,9 @@ package tx
 import (
 	"context"
 	"database/sql"
+
 	"github.com/ydb-platform/ydb-go-sdk/v3/retry"
+
 	"github.com/ydb-platform/ydb-go-sql/internal/errors"
 )
 
@@ -19,13 +21,13 @@ type TxDoer struct {
 // error, it repeats it accordingly to retry configuration that TxDoer's DB
 // driver holds.
 //
-// Note that callers should mutate state outside of f carefully and keeping in
+// Note that callers should mutate state outside f carefully and keeping in
 // mind that f could be called again even if no error returned – transaction
 // commitment can be failed:
 //
 //   var results []int
 //   ydb.DoTx(x, db, TxOperationFunc(func(x context.Context, tx *conn.Tx) error {
-//       // Reset resulting slice to prevent duplicates when retry occured.
+//       // Reset resulting slice to prevent duplicates when retry occurred.
 //       results = results[:0]
 //
 //       rows, err := tx.QueryContext(...)
@@ -48,7 +50,9 @@ func (d TxDoer) do(ctx context.Context, f TxOperationFunc) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	err = f(ctx, tx)
 	if err != nil {
 		return err

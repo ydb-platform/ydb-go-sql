@@ -5,7 +5,7 @@ import (
 
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
-	ydb_table_types "github.com/ydb-platform/ydb-go-sdk/v3/table/types"
+	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 )
 
 func ToQueryParams(values []driver.NamedValue) *table.QueryParameters {
@@ -16,7 +16,7 @@ func ToQueryParams(values []driver.NamedValue) *table.QueryParameters {
 	for i, arg := range values {
 		opts[i] = table.ValueParam(
 			arg.Name,
-			arg.Value.(ydb_table_types.Value),
+			arg.Value.(types.Value),
 		)
 	}
 	return table.NewQueryParameters(opts...)

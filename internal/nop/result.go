@@ -2,19 +2,20 @@ package nop
 
 import (
 	"database/sql/driver"
+
 	"github.com/ydb-platform/ydb-go-sql/internal/errors"
 )
 
 type result struct {
-	lastInsertId *int64
+	lastInsertID *int64
 	rowsAffected *int64
 }
 
 type option func(r *result)
 
-func WithResultLastInsertId(id int64) option {
+func WithResultLastInsertID(id int64) option {
 	return func(r *result) {
-		r.lastInsertId = &id
+		r.lastInsertID = &id
 	}
 }
 
@@ -25,8 +26,8 @@ func WithResultRowsAffected(rowsAffected int64) option {
 }
 
 func (r *result) LastInsertId() (int64, error) {
-	if r.lastInsertId != nil {
-		return *r.lastInsertId, nil
+	if r.lastInsertID != nil {
+		return *r.lastInsertID, nil
 	}
 	return 0, errors.ErrUnsupported
 }

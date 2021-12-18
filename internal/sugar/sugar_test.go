@@ -1,9 +1,10 @@
 package sugar
 
 import (
-	ydb_table_types "github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 	"strings"
 	"testing"
+
+	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 )
 
 func TestDeclaration(t *testing.T) {
@@ -13,13 +14,13 @@ func TestDeclaration(t *testing.T) {
 	}{
 		{
 			decl: func(d *Declaration) {
-				d.Declare("foo", ydb_table_types.TypeString)
-				d.Declare("bar", ydb_table_types.TypeInt64)
-				d.Declare("baz", ydb_table_types.Struct(
-					ydb_table_types.StructField("foo", ydb_table_types.TypeString),
-					ydb_table_types.StructField("bar", ydb_table_types.TypeInt64),
-					ydb_table_types.StructField("baz", ydb_table_types.Tuple(
-						ydb_table_types.TypeString, ydb_table_types.TypeInt64,
+				d.Declare("foo", types.TypeString)
+				d.Declare("bar", types.TypeInt64)
+				d.Declare("baz", types.Struct(
+					types.StructField("foo", types.TypeString),
+					types.StructField("bar", types.TypeInt64),
+					types.StructField("baz", types.Tuple(
+						types.TypeString, types.TypeInt64,
 					)),
 				))
 			},

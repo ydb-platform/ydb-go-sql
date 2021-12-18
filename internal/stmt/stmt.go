@@ -4,14 +4,15 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
+
 	"github.com/ydb-platform/ydb-go-sql/internal/check"
+	"github.com/ydb-platform/ydb-go-sql/internal/errors"
 	"github.com/ydb-platform/ydb-go-sql/internal/mode"
 	"github.com/ydb-platform/ydb-go-sql/internal/nop"
 	"github.com/ydb-platform/ydb-go-sql/internal/rows"
 	"github.com/ydb-platform/ydb-go-sql/internal/x"
-
-	"github.com/ydb-platform/ydb-go-sql/internal/errors"
 )
 
 type Stmt interface {
@@ -25,9 +26,6 @@ type Stmt interface {
 type stmt struct {
 	stmt             table.Statement
 	defaultTxControl *table.TransactionControl
-
-	e driver.ExecerContext
-	q driver.QueryerContext
 }
 
 func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {

@@ -3,12 +3,12 @@ package rows
 import (
 	"context"
 	"database/sql/driver"
-	"github.com/ydb-platform/ydb-go-sql/internal/errors"
 	"io"
 
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/result"
 
+	"github.com/ydb-platform/ydb-go-sql/internal/errors"
 	"github.com/ydb-platform/ydb-go-sql/internal/ydb2sql"
 )
 
