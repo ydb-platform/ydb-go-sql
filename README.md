@@ -10,7 +10,7 @@ interface.
 
 The recommended usage of this package is as follows:
 ```go
-import "github.com/ydb-platform/ydb-go-conn"
+import "github.com/ydb-platform/ydb-go-sql"
 
 func main() {
     db, err := sql.OpenDB(ydb.Connector(
@@ -30,7 +30,7 @@ database initialization via sql.Open() function:
 ```go
 import (
     "database/conn"
-    _ "github.com/ydb-platform/ydb-go-conn" // for "ydb" conn driver registration.
+    _ "github.com/ydb-platform/ydb-go-sql" // for "ydb" conn driver registration.
 )
 func main() {
     db, err := sql.Open("ydb", "ydb://endpoint/database?auth-token=secret")
@@ -54,7 +54,7 @@ same logic for transactions. There is a TxDoer struct or DoTx() function (which
 is just a shortcut) for this purpose:
 
 ```go
-import "github.com/ydb-platform/ydb-go-conn"
+import "github.com/ydb-platform/ydb-go-sql"
 
 func main() {
     db, err := sql.OpenDB(ydb.Connector(...))
