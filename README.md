@@ -7,9 +7,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/ydb-platform/ydb-go-sql)](https://goreportcard.com/report/github.com/ydb-platform/ydb-go-sql)
 [![codecov](https://codecov.io/gh/ydb-platform/ydb-go-sql/branch/master/graph/badge.svg)](https://app.codecov.io/gh/ydb-platform/ydb-go-sql)
 
-[godoc](https://godoc.org/github.com/ydb-platform/ydb-go-sql/)
-
-
 This is an experimental version of Go database/sql driver for YDB. 
 It is in active development and is not intended for use in production environments.
 
