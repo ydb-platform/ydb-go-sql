@@ -14,11 +14,23 @@ import (
 // Rows is an aggregate interface which returns from stream.Result()
 type Rows interface {
 	driver.Rows
+	driver.RowsNextResultSet
 }
 
 type rows struct {
 	res result.StreamResult
 	ctx context.Context
+}
+
+func (r *rows) HasNextResultSet() bool {
+	return r.res.HasNextResultSet()
+}
+
+func (r *rows) NextResultSet() error {
+	if r.res.NextResultSet(r.ctx) {
+		return nil
+	}
+	return io.EOF
 }
 
 // Result returns Rows interface based on result.StreamResult

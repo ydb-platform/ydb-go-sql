@@ -36,7 +36,8 @@ database initialization via sql.Open() function:
 
 ```go
 import (
-    "database/conn"
+    "database/sql"
+	
     _ "github.com/ydb-platform/ydb-go-sql" // for "ydb" conn driver registration.
 )
 func main() {
