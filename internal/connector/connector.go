@@ -41,7 +41,7 @@ func New(owner Driver, opts ...Option) Connector {
 	if owner != nil {
 		go func() {
 			<-owner.Done()
-			c.Close(context.Background())
+			_ = c.Close(context.Background())
 		}()
 	}
 	return c
