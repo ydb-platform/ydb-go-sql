@@ -3,7 +3,6 @@ package conn
 import (
 	"context"
 	"database/sql"
-	"github.com/ydb-platform/ydb-go-sql"
 	"log"
 	"os"
 	"testing"
@@ -11,7 +10,7 @@ import (
 
 	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
 
-	"github.com/ydb-platform/ydb-go-sql/internal/connector"
+	"github.com/ydb-platform/ydb-go-sql"
 )
 
 func TestLegacyDriverOpen(t *testing.T) {
@@ -37,10 +36,10 @@ func TestDriverSelect(t *testing.T) {
 	})
 
 	db := sql.OpenDB(ydb.Connector(
-		connector.WithConnectionString(os.Getenv("YDB_CONNECTION_STRING")),
-		connector.WithAnonymousCredentials(),
-		connector.WithTraceDriver(driverTrace),
-		connector.WithTraceTable(tableTrace),
+		ydb.WithConnectionString(os.Getenv("YDB_CONNECTION_STRING")),
+		ydb.WithAnonymousCredentials(),
+		ydb.WithTraceDriver(driverTrace),
+		ydb.WithTraceTable(tableTrace),
 	))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
