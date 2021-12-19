@@ -49,6 +49,7 @@ func TestConnectorDialOnPing(t *testing.T) {
 	}
 }
 
+// TestConnectorRedialOnError checks re-dialing
 // KIKIMR-8592: check that we try re-dial after any error
 func TestConnectorRedialOnError(t *testing.T) {
 	const timeout = 100 * time.Millisecond

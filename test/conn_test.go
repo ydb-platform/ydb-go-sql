@@ -39,16 +39,6 @@ func openDB(ctx context.Context) (*sql.DB, error) {
 	return db, db.PingContext(ctx)
 }
 
-func TestLegacyDriverOpen(t *testing.T) {
-	db, err := sql.Open("ydb", os.Getenv("YDB_CONNECTION_STRING"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Ping(); err != nil {
-		t.Fatal(err)
-	}
-}
-
 //func TestQuery(t *testing.T) {
 //	c := ydb.Connector(
 //		ydb.WithConnectionString(os.Getenv("YDB_CONNECTION_STRING")),
@@ -237,116 +227,7 @@ func TestLegacyDriverOpen(t *testing.T) {
 //	}
 //}
 //
-func TestDatabaseSelect(t *testing.T) {
-	for _, test := range []struct {
-		query  string
-		params []interface{}
-	}{
-		{
-			query: "DECLARE $a AS INT64; SELECT $a",
-			params: []interface{}{
-				sql.Named("a", int64(1)),
-			},
-		},
-	} {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-
-		t.Run("exec", func(t *testing.T) {
-			db, err := openDB(ctx)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer db.Close()
-			res, err := db.ExecContext(ctx, test.query, test.params...)
-			if err != nil {
-				t.Fatal(err)
-			}
-			log.Printf("result=%v", res)
-		})
-		t.Run("query", func(t *testing.T) {
-			db, err := openDB(ctx)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer db.Close()
-			rows, err := db.QueryContext(ctx, test.query, test.params...)
-			if err != nil {
-				t.Fatal(err)
-			}
-			log.Printf("rows=%v", rows)
-		})
-	}
-}
-
-func TestStatement(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping testing in short mode")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	db, err := openDB(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-
-	conn, err := db.Conn(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	stmt, err := conn.PrepareContext(ctx, "SELECT NULL;")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stmt.Close()
-
-	_, _ = stmt.Exec()
-	_, _ = stmt.Exec()
-
-	_, _ = conn.QueryContext(ctx, "SELECT 42;")
-}
-
-func TestTx(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	db, err := openDB(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	stmt, err := tx.PrepareContext(ctx, "SELECT NULL;")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stmt.Close()
-
-	_, _ = stmt.Exec()
-	_ = tx.Commit()
-
-	time.Sleep(5 * time.Second)
-
-	{
-		rows, err := db.QueryContext(context.Background(), "SELECT 42")
-		if err != nil {
-			t.Fatal(err)
-		}
-		_ = rows.Close()
-
-		time.Sleep(5 * time.Second)
-	}
-	time.Sleep(5 * time.Second)
-}
-
-func TestDriver(t *testing.T) {
+func TestFullWorkflow(t *testing.T) {
 	params, err := ydb.ConnectionString(os.Getenv("YDB_CONNECTION_STRING"))
 	if err != nil {
 		panic(err)
@@ -360,11 +241,22 @@ func TestDriver(t *testing.T) {
 	defer func() {
 		_ = db.Close()
 	}()
-	if err = db.PingContext(ctx); err != nil {
-		panic(err)
+	// check ping
+	{
+		if err = db.PingContext(ctx); err != nil {
+			panic(err)
+		}
 	}
-	if _, err = db.ExecContext(
-		ydb.WithSchemeQuery(ctx), `
+	// create series table
+	{
+		if _, err = db.ExecContext(
+			ydb.WithSchemeQuery(ctx),
+			`DROP TABLE series;`,
+		); err != nil && !ydb.IsOperationErrorSchemeError(err) {
+			panic(err)
+		}
+		if _, err = db.ExecContext(
+			ydb.WithSchemeQuery(ctx), `
 			CREATE TABLE series
 			(
 				series_id Uint64,
@@ -375,11 +267,20 @@ func TestDriver(t *testing.T) {
 				PRIMARY KEY (series_id)
 			);
 		`,
-	); err != nil {
-		panic(err)
+		); err != nil {
+			panic(err)
+		}
 	}
-	if _, err = db.ExecContext(
-		ydb.WithSchemeQuery(ctx), `
+	// create seasons table
+	{
+		if _, err = db.ExecContext(
+			ydb.WithSchemeQuery(ctx),
+			`DROP TABLE seasons;`,
+		); err != nil && !ydb.IsOperationErrorSchemeError(err) {
+			panic(err)
+		}
+		if _, err = db.ExecContext(
+			ydb.WithSchemeQuery(ctx), `
 			CREATE TABLE seasons
 			(
 				series_id Uint64,
@@ -390,11 +291,20 @@ func TestDriver(t *testing.T) {
 				PRIMARY KEY (series_id, season_id)
 			);
 		`,
-	); err != nil {
-		panic(err)
+		); err != nil {
+			panic(err)
+		}
 	}
-	if _, err = db.ExecContext(
-		ydb.WithSchemeQuery(ctx), `
+	// create episodes table
+	{
+		if _, err = db.ExecContext(
+			ydb.WithSchemeQuery(ctx),
+			`DROP TABLE episodes;`,
+		); err != nil && !ydb.IsOperationErrorSchemeError(err) {
+			panic(err)
+		}
+		if _, err = db.ExecContext(
+			ydb.WithSchemeQuery(ctx), `
 			CREATE TABLE episodes
 			(
 				series_id Uint64,
@@ -405,71 +315,81 @@ func TestDriver(t *testing.T) {
 				PRIMARY KEY (series_id, season_id, episode_id)
 			);
 		`,
-	); err != nil {
-		panic(err)
+		); err != nil {
+			panic(err)
+		}
 	}
-	tx, err := db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelSerializable,
-	})
-	if err != nil {
-		panic(err)
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
-	row := tx.QueryRowContext(
-		ydb.WithExplain(ctx),
-		render(fill, templateConfig{
+	// fill tables in tx
+	{
+		tx, err := db.BeginTx(ctx, &sql.TxOptions{
+			Isolation: sql.LevelSerializable,
+		})
+		if err != nil {
+			panic(err)
+		}
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		// replace/insert over prepared query
+		stmt, err := tx.PrepareContext(ctx, render(fill, templateConfig{
 			TablePathPrefix: params.Database(),
-		}),
-		sql.Named("seriesData", getSeriesData()),
-		sql.Named("seasonsData", getSeasonsData()),
-		sql.Named("episodesData", getEpisodesData()),
-	)
-	if err != nil {
-		panic(err)
+		}))
+		if err != nil {
+			panic(err)
+		}
+		_, err = stmt.ExecContext(
+			ydb.WithTxControl(ctx, table.TxControl(
+				table.BeginTx(
+					table.WithSerializableReadWrite(),
+				),
+				table.CommitTx(),
+			)),
+			sql.Named("seriesData", getSeriesData()),
+			sql.Named("seasonsData", getSeasonsData()),
+			sql.Named("episodesData", getEpisodesData()),
+		)
+		if err != nil {
+			panic(err)
+		}
+		// check explain
+		row := tx.QueryRowContext(
+			ydb.WithExplain(ctx),
+			render(fill, templateConfig{
+				TablePathPrefix: params.Database(),
+			}),
+			sql.Named("seriesData", getSeriesData()),
+			sql.Named("seasonsData", getSeasonsData()),
+			sql.Named("episodesData", getEpisodesData()),
+		)
+		if err != nil {
+			panic(err)
+		}
+		var (
+			ast  string
+			plan string
+		)
+		if err = row.Scan(&ast, &plan); err != nil {
+			panic(err)
+		}
+		log.Printf("> select_simple_transaction (explain):\n")
+		log.Printf(
+			"  > AST: %s\n",
+			ast,
+		)
+		log.Printf(
+			"  > Plan: %s\n",
+			plan,
+		)
+		if err = tx.Commit(); err != nil {
+			panic(err)
+		}
 	}
-	var (
-		ast  string
-		plan string
-	)
-	if err = row.Scan(&ast, &plan); err != nil {
-		panic(err)
-	}
-	log.Printf("> select_simple_transaction (explain):\n")
-	log.Printf(
-		"  > AST: %s\n",
-		ast,
-	)
-	log.Printf(
-		"  > Plan: %s\n",
-		plan,
-	)
-
-	stmt, err := tx.PrepareContext(ctx, render(fill, templateConfig{
-		TablePathPrefix: params.Database(),
-	}))
-	if err != nil {
-		panic(err)
-	}
-	_, err = stmt.ExecContext(
-		ydb.WithTxControl(ctx, table.TxControl(
-			table.BeginTx(
-				table.WithSerializableReadWrite(),
-			),
-			table.CommitTx(),
-		)),
-		sql.Named("seriesData", getSeriesData()),
-		sql.Named("seasonsData", getSeasonsData()),
-		sql.Named("episodesData", getEpisodesData()),
-	)
-	if err != nil {
-		panic(err)
-	}
-	rows, err := tx.QueryContext(
-		ctx,
-		render(
-			template.Must(template.New("").Parse(`
+	// select with data query
+	{
+		rows, err := db.QueryContext(
+			ctx,
+			render(
+				template.Must(template.New("").Parse(`
 				PRAGMA TablePathPrefix("{{ .TablePathPrefix }}");
 				DECLARE $seriesID AS Uint64;
 	
@@ -482,36 +402,74 @@ func TestDriver(t *testing.T) {
 				WHERE
 					series_id = $seriesID;
 			`)),
-			templateConfig{
-				TablePathPrefix: params.Database(),
-			},
-		),
-		sql.Named("seriesID", types.Uint64Value(1)),
-	)
-	if err != nil {
-		panic(err)
+				templateConfig{
+					TablePathPrefix: params.Database(),
+				},
+			),
+			sql.Named("seriesID", types.Uint64Value(1)),
+		)
+		if err != nil {
+			panic(err)
+		}
+		if !rows.NextResultSet() {
+			panic("no result sets")
+		}
+		if !rows.Next() {
+			panic("no rows")
+		}
+		var (
+			id    *uint64
+			title *string
+			date  *time.Time
+		)
+		if err = rows.Scan(&id, &title, &date); err != nil {
+			panic(err)
+		}
+		log.Printf("> select_simple_transaction:\n")
+		log.Printf("  > %d %s %s\n", *id, *title, *date)
 	}
-	if !rows.NextResultSet() {
-		panic("no result sets")
-	}
-	if !rows.Next() {
-		panic("no rows")
-	}
-	var (
-		id    *uint64
-		title *string
-		date  *time.Time
-	)
-	if err = rows.Scan(&id, &title, &date); err != nil {
-		panic(err)
-	}
-	log.Printf("> select_simple_transaction:\n")
-	log.Printf(
-		"  > %d %s %s\n",
-		*id, *title, *date,
-	)
-	if err = tx.Commit(); err != nil {
-		panic(err)
+	// select with scan query
+	{
+		rows, err := db.QueryContext(
+			ydb.WithScanQuery(ctx),
+			render(
+				template.Must(template.New("").Parse(`
+					PRAGMA TablePathPrefix("{{ .TablePathPrefix }}");
+		
+					DECLARE $series AS List<UInt64>;
+		
+					SELECT series_id, season_id, title, first_aired
+					FROM seasons
+					WHERE series_id IN $series
+				`)),
+				templateConfig{
+					TablePathPrefix: params.Database(),
+				},
+			),
+			sql.Named("series", types.ListValue(
+				types.Uint64Value(1),
+				types.Uint64Value(10),
+			)),
+		)
+		if err != nil {
+			panic(err)
+		}
+		if !rows.NextResultSet() {
+			panic("no result sets")
+		}
+		log.Printf("> scan_query_select:\n")
+		var (
+			seriesID uint64
+			seasonID uint64
+			title    string
+			date     time.Time
+		)
+		for rows.Next() {
+			if err = rows.Scan(&seriesID, &seasonID, &title, &date); err != nil {
+				panic(err)
+			}
+			log.Printf("  > SeriesId: %d, SeasonId: %d, Title: %s, Air date: %s", seriesID, seasonID, title, date)
+		}
 	}
 }
 
