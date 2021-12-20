@@ -253,13 +253,11 @@ func TestFullWorkflow(t *testing.T) {
 	// create series table
 	{
 		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx),
-			`DROP TABLE series;`,
+			ctx, ydb.SchemeQuery(`DROP TABLE series;`),
 		); err != nil && !ydb.IsOperationErrorSchemeError(err) {
 			panic(err)
 		}
-		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx), `
+		if _, err = db.ExecContext(ctx, ydb.SchemeQuery(`
 			CREATE TABLE series
 			(
 				series_id Uint64,
@@ -269,21 +267,18 @@ func TestFullWorkflow(t *testing.T) {
 				title Utf8,
 				PRIMARY KEY (series_id)
 			);
-		`,
-		); err != nil {
+		`)); err != nil {
 			panic(err)
 		}
 	}
 	// create seasons table
 	{
 		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx),
-			`DROP TABLE seasons;`,
+			ctx, ydb.SchemeQuery(`DROP TABLE seasons;`),
 		); err != nil && !ydb.IsOperationErrorSchemeError(err) {
 			panic(err)
 		}
-		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx), `
+		if _, err = db.ExecContext(ctx, ydb.SchemeQuery(`
 			CREATE TABLE seasons
 			(
 				series_id Uint64,
@@ -293,21 +288,18 @@ func TestFullWorkflow(t *testing.T) {
 				title Utf8,
 				PRIMARY KEY (series_id, season_id)
 			);
-		`,
-		); err != nil {
+		`)); err != nil {
 			panic(err)
 		}
 	}
 	// create episodes table
 	{
 		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx),
-			`DROP TABLE episodes;`,
+			ctx, ydb.SchemeQuery(`DROP TABLE episodes;`),
 		); err != nil && !ydb.IsOperationErrorSchemeError(err) {
 			panic(err)
 		}
-		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx), `
+		if _, err = db.ExecContext(ctx, ydb.SchemeQuery(`
 			CREATE TABLE episodes
 			(
 				series_id Uint64,
@@ -317,8 +309,7 @@ func TestFullWorkflow(t *testing.T) {
 				title Utf8,
 				PRIMARY KEY (series_id, season_id, episode_id)
 			);
-		`,
-		); err != nil {
+		`)); err != nil {
 			panic(err)
 		}
 	}
@@ -334,9 +325,11 @@ func TestFullWorkflow(t *testing.T) {
 			_ = tx.Rollback()
 		}()
 		// replace/insert over prepared query
-		stmt, err := tx.PrepareContext(ctx, render(fill, templateConfig{
-			TablePathPrefix: params.Database(),
-		}))
+		stmt, err := tx.PrepareContext(ctx, ydb.DataQuery(
+			render(fill, templateConfig{
+				TablePathPrefix: params.Database(),
+			})),
+		)
 		if err != nil {
 			panic(err)
 		}
@@ -356,10 +349,10 @@ func TestFullWorkflow(t *testing.T) {
 		}
 		// check explain
 		row := tx.QueryRowContext(
-			ydb.WithExplain(ctx),
-			render(fill, templateConfig{
+			ctx,
+			ydb.ExplainQuery(render(fill, templateConfig{
 				TablePathPrefix: params.Database(),
-			}),
+			})),
 			sql.Named("seriesData", getSeriesData()),
 			sql.Named("seasonsData", getSeasonsData()),
 			sql.Named("episodesData", getEpisodesData()),
@@ -434,8 +427,8 @@ func TestFullWorkflow(t *testing.T) {
 	// select with scan query
 	{
 		rows, err := db.QueryContext(
-			ydb.WithScanQuery(ctx),
-			render(
+			ctx,
+			ydb.ScanQuery(render(
 				template.Must(template.New("").Parse(`
 					PRAGMA TablePathPrefix("{{ .TablePathPrefix }}");
 		
@@ -448,7 +441,7 @@ func TestFullWorkflow(t *testing.T) {
 				templateConfig{
 					TablePathPrefix: params.Database(),
 				},
-			),
+			)),
 			sql.Named("series", types.ListValue(
 				types.Uint64Value(1),
 				types.Uint64Value(10),

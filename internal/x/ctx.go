@@ -5,15 +5,12 @@ import (
 
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
-
-	"github.com/ydb-platform/ydb-go-sql/internal/mode"
 )
 
 type (
 	ctxTransactionControlKey struct{}
 	ctxDataQueryOptionsKey   struct{}
 	ctxScanQueryOptionsKey   struct{}
-	ctxModeTypeKey           struct{}
 )
 
 func WithTxControl(ctx context.Context, txc *table.TransactionControl) context.Context {
@@ -47,17 +44,4 @@ func DataQueryOptions(ctx context.Context) []options.ExecuteDataQueryOption {
 		return opts
 	}
 	return nil
-}
-
-// WithQueryMode returns a copy of parent context with scan query flag.
-func WithQueryMode(ctx context.Context, m mode.Type) context.Context {
-	return context.WithValue(ctx, ctxModeTypeKey{}, m)
-}
-
-// QueryMode returns true if context contains scan query flag.
-func QueryMode(ctx context.Context) mode.Type {
-	if m, ok := ctx.Value(ctxModeTypeKey{}).(mode.Type); ok {
-		return m
-	}
-	return mode.Default
 }
