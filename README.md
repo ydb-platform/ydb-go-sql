@@ -1,3 +1,8 @@
+# WARNING: THIS IS SUPER MEGA EXTRA ALPHA VERSION OF DATABASE/SQL DRIVER FOR YDB!!!
+# Don't use it in production environment!
+
+If you ok with this warning, then...
+
 # Go database/sql driver for YDB
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/ydb-platform/ydb-go-sql)](https://pkg.go.dev/github.com/ydb-platform/ydb-go-sql)
