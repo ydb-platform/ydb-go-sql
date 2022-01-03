@@ -6,6 +6,7 @@ package conn
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -150,17 +151,35 @@ func TestTx(t *testing.T) {
 	}
 	defer db.Close()
 
-	tx, err := db.BeginTx(ctx, nil)
+	// создание обертки над ydb-шной транзакцией
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+		ReadOnly:  false,
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer tx.Rollback()
+	// в этом месте вызывается tx.Execute()
+	res, err := tx.ExecContext(ctx, "INSERT INTO tbl (a, b) VALUES (1, 2);")
+	if err != nil {
+		panic(err)
+	}
+	lastInsertId, err := res.LastInsertId()
+	if err != nil {
+		// nop
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		// nop
+	}
+	fmt.Printf("insertedID=%d, rowsAffected=%d\n", lastInsertId, rowsAffected)
+	// в этом месте вызывается tx.Execute()
+	rows, err := tx.QueryContext(ctx, "SELECT * FROM tbl WHERE id=$id;", sql.Named("id", 1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	stmt, err := tx.PrepareContext(ctx, "SELECT NULL;")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stmt.Close()
-
-	_, _ = stmt.Exec()
+	defer rows.Close()
 	_ = tx.Commit()
 
 	time.Sleep(5 * time.Second)
