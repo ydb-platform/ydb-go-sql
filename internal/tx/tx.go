@@ -15,7 +15,7 @@ type Tx interface {
 	driver.ExecerContext
 }
 
-func New(ctx context.Context, opts driver.TxOptions, s table.ClosableSession, close func()) (Tx, error) {
+func New(ctx context.Context, opts driver.TxOptions, s table.ClosableSession, doClose func()) (Tx, error) {
 	isolation, control, err := isolationOrControl(opts)
 	if err != nil {
 		return nil, err
@@ -24,7 +24,7 @@ func New(ctx context.Context, opts driver.TxOptions, s table.ClosableSession, cl
 		return &ro{
 			s:     s,
 			txc:   table.TxControl(control...),
-			close: close,
+			close: doClose,
 		}, nil
 	}
 	tx, err := s.BeginTransaction(ctx, table.TxSettings(isolation))
@@ -35,6 +35,6 @@ func New(ctx context.Context, opts driver.TxOptions, s table.ClosableSession, cl
 		s:     s,
 		tx:    tx,
 		txc:   table.TxControl(append(control, table.WithTx(tx))...),
-		close: close,
+		close: doClose,
 	}, nil
 }

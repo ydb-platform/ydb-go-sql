@@ -5,7 +5,7 @@ import "strings"
 type Type int
 
 const (
-	Prefix = "--ydb:"
+	Prefix = "--gosql:"
 
 	Default Type = iota
 	ScanQuery

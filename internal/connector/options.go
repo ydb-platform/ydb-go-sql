@@ -70,6 +70,12 @@ func WithDatabase(database string) Option {
 	}
 }
 
+func WithLogger(details trace.Details, opts ...ydb.LoggerOption) Option {
+	return func(c *connector) {
+		c.options = append(c.options, ydb.WithLogger(details))
+	}
+}
+
 func WithTraceDriver(t trace.Driver) Option {
 	return func(c *connector) {
 		c.options = append(c.options, ydb.WithTraceDriver(t))

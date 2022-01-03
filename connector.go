@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"time"
 
+	"github.com/ydb-platform/ydb-go-sdk/v3"
 	"github.com/ydb-platform/ydb-go-sdk/v3/config"
 	"github.com/ydb-platform/ydb-go-sdk/v3/credentials"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
@@ -46,6 +47,14 @@ func WithAccessTokenCredentials(accessToken string) connector.Option {
 
 func WithDatabase(database string) connector.Option {
 	return connector.WithDatabase(database)
+}
+
+func WithLogger(details TraceDetails, opts ...LoggerOption) connector.Option {
+	nativeOpts := make([]ydb.LoggerOption, 0, len(opts))
+	for _, o := range opts {
+		nativeOpts = append(nativeOpts, ydb.LoggerOption(o))
+	}
+	return connector.WithLogger(trace.Details(details), nativeOpts...)
 }
 
 func WithTraceDriver(t trace.Driver) connector.Option {

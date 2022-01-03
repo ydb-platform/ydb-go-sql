@@ -9,10 +9,10 @@ import (
 	"github.com/ydb-platform/ydb-go-sql/internal/errors"
 )
 
-type TxOperationFunc func(context.Context, *sql.Tx) error
+type OperationFunc func(context.Context, *sql.Tx) error
 
-// TxDoer contains options for retrying transactions.
-type TxDoer struct {
+// Doer contains options for retrying transactions.
+type Doer struct {
 	DB      *sql.DB
 	Options *sql.TxOptions
 }
@@ -39,13 +39,13 @@ type TxDoer struct {
 //       }
 //       return rows.Err()
 //   }))
-func (d TxDoer) Do(ctx context.Context, f TxOperationFunc) (err error) {
+func (d Doer) Do(ctx context.Context, f OperationFunc) (err error) {
 	return errors.Map(retry.Retry(ctx, retry.IsOperationIdempotent(ctx), func(ctx context.Context) (err error) {
 		return d.do(ctx, f)
 	}))
 }
 
-func (d TxDoer) do(ctx context.Context, f TxOperationFunc) error {
+func (d Doer) do(ctx context.Context, f OperationFunc) error {
 	tx, err := d.DB.BeginTx(ctx, d.Options)
 	if err != nil {
 		return err
@@ -62,6 +62,6 @@ func (d TxDoer) do(ctx context.Context, f TxOperationFunc) error {
 
 // DoTx is a shortcut for calling Do(x, f) on initialized TxDoer with DB
 // field set to given db.
-func DoTx(ctx context.Context, db *sql.DB, f TxOperationFunc) error {
-	return (TxDoer{DB: db}).Do(ctx, f)
+func DoTx(ctx context.Context, db *sql.DB, f OperationFunc) error {
+	return (Doer{DB: db}).Do(ctx, f)
 }

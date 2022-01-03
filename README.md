@@ -12,10 +12,10 @@ If you ok with this warning, then...
 [![Go Report Card](https://goreportcard.com/badge/github.com/ydb-platform/ydb-go-sql)](https://goreportcard.com/report/github.com/ydb-platform/ydb-go-sql)
 [![codecov](https://codecov.io/gh/ydb-platform/ydb-go-sql/branch/master/graph/badge.svg)](https://app.codecov.io/gh/ydb-platform/ydb-go-sql)
 
-This is an experimental version of Go database/sql driver for YDB. 
+This is an experimental version of Go database/sql driver for `YDB`. 
 It is in active development and is not intended for use in production environments.
 
-Package ydb provides integration of YDB table API with database/sql driver
+Package ydb provides integration of `YDB` table API with `database/sql` driver
 interface.
 
 ## Usage
@@ -37,7 +37,7 @@ func main() {
 ```
 
 But, as common for sql driver implementations, there is a standard way of
-database initialization via sql.Open() function:
+database initialization via `sql.Open()` function:
 
 ```go
 import (
@@ -50,20 +50,20 @@ func main() {
 }
 ```
 
-That is, data source name must be a welformed URL, with scheme "ydb", host for
-YDB endpoint server, and path for database name. Note that token parameter is
+That is, data source name must be a welformed URL, with scheme `ydb`, host for
+`YDB` endpoint server, and path for database name. Note that token parameter is
 required.
 
 Data source name parameters:
 token – access token to be used during requests (required).
 
-As you may notice, initialization via sql.Open() does not provide ability to
+As you may notice, initialization via `sql.Open()` does not provide ability to
 setup tracing configuration.
 
-Note that unlike ydb package, ydb retrying most ydb errors implicitly.
-That is, calling db.QueryContext() or db.ExecContext() will retry operation
+Note that unlike `ydb` package, ydb retrying most ydb errors implicitly.
+That is, calling `db.QueryContext()` or `db.ExecContext()` will retry operation
 when it receives retriable error from ydb. But it is not possible to provide
-same logic for transactions. There is a TxDoer struct or DoTx() function (which
+same logic for transactions. There is a `TxDoer` struct or `DoTx()` function (which
 is just a shortcut) for this purpose:
 
 ```go
@@ -99,19 +99,29 @@ func main() {
 }
 ```
 
-Note that database/sql package reuses sql.Conn instances which are wrappers
+Note that `database/sql` package reuses `sql.Conn` instances which are wrappers
 around ydb/table.Session instances in case of ydb. It could be reasonable to
-increase the number of reused sessions via database/sql.DB.SetMaxIdleConns()
-and database/sql.DB.SetMaxOpenConns() calls. If doing so, it is also highly
+increase the number of reused sessions via `database/sql.DB.SetMaxIdleConns()`
+and `database/sql.DB.SetMaxOpenConns()` calls. If doing so, it is also highly
 recommended to setup inner session pool's size limit to the same value by
-passing WithSessionPoolSizeLimit() option to the Connector() function.
+passing `WithSessionPoolSizeLimit()` option to the `Connector()` function.
 
 It is worth noting that YDB supports server side operation timeout. That is,
 client could set up operation timeout among other operation options. When this
 timeout exceeds, YDB will try to cancel operation execution and in any result
 of the cancellation appropriate timeout error will be returned. By default, this
-package "mirrors" context.Context deadlines and passes operation timeout option
+package mirrors `context.Context` deadlines and passes operation timeout option
 if context deadline is not empty. To configure or disable such behavior please
-see appropriate Connector options.
+see appropriate `Connector` options.
 
-
+## Supported modes
+Operation | `DataQuery` | `ScanQuery` | `SchemeQuery` | `ExplainQuery`
+--- |-------------|-------------|---------------| ---
+`db.Query[Context]` | supported           | supported           |             | supported 
+`db.Exec[Context]` |           |           | supported             | 
+`db.Prepare[Context]` |           |           |             |  
+`tx.Query[Context]` | supported           |           |             |  
+`tx.Prepare[Context]` | supported           |           |             |  
+`tx.Exec[Context]` |           |           |             | 
+`stmt.Query[Context]` | supported           |           |             |  
+`stmt.Exec[Context]` |           |           |             | 

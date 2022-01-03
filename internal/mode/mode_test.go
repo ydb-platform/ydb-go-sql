@@ -12,7 +12,7 @@ func TestCheckQuery(t *testing.T) {
 		{
 			name: "data query",
 			query: `
-				--ydb:DATA 
+				--gosql:DATA 
 				SELECT 1;
 			`,
 			mode: DataQuery,
@@ -27,7 +27,7 @@ func TestCheckQuery(t *testing.T) {
 		{
 			name: "scan query",
 			query: `
-				--ydb:SCAN 
+				--gosql:SCAN 
 				SELECT 1;
 			`,
 			mode: ScanQuery,
@@ -35,7 +35,7 @@ func TestCheckQuery(t *testing.T) {
 		{
 			name: "scheme query",
 			query: `
-				--ydb:SCHEME 
+				--gosql:SCHEME 
 				CREATE TABLE t();
 			`,
 			mode: SchemeQuery,
@@ -43,7 +43,7 @@ func TestCheckQuery(t *testing.T) {
 		{
 			name: "explain",
 			query: `
-				--ydb:EXPLAIN 
+				--gosql:EXPLAIN 
 				SELECT 1;
 			`,
 			mode: ExplainQuery,

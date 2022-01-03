@@ -27,7 +27,12 @@ type stmt struct {
 }
 
 func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
-	_, res, err := s.stmt.Execute(ctx, x.TxControl(ctx, s.defaultTxControl), x.ToQueryParams(args), x.DataQueryOptions(ctx)...)
+	_, res, err := s.stmt.Execute(
+		ctx,
+		x.TxControl(ctx, s.defaultTxControl),
+		x.ToQueryParams(args),
+		x.DataQueryOptions(ctx)...,
+	)
 	if err != nil {
 		return nil, errors.Map(err)
 	}
@@ -35,7 +40,12 @@ func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driv
 }
 
 func (s *stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
-	_, res, err := s.stmt.Execute(ctx, x.TxControl(ctx, s.defaultTxControl), x.ToQueryParams(args), x.DataQueryOptions(ctx)...)
+	_, res, err := s.stmt.Execute(
+		ctx,
+		x.TxControl(ctx, s.defaultTxControl),
+		x.ToQueryParams(args),
+		x.DataQueryOptions(ctx)...,
+	)
 	if err != nil {
 		return nil, errors.Map(err)
 	}
