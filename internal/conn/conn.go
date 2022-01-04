@@ -77,7 +77,7 @@ func (c *conn) ExecContext(ctx context.Context, query string, args []driver.Name
 	if c.tx != nil {
 		return c.tx.ExecContext(ctx, query, args)
 	}
-	switch m := x.QueryMode(ctx); m {
+	switch m := mode.Mode(query); m {
 	case mode.DataQuery:
 		_, res, err := c.s.Execute(ctx, x.TxControl(ctx, c.defaultTxControl), query, x.ToQueryParams(args))
 		if err != nil {
@@ -99,7 +99,7 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 	if c.tx != nil {
 		return c.tx.QueryContext(ctx, query, args)
 	}
-	switch m := x.QueryMode(ctx); m {
+	switch m := mode.Mode(query); m {
 	case mode.DataQuery:
 		_, res, err := c.s.Execute(ctx, x.TxControl(ctx, c.defaultTxControl), query, x.ToQueryParams(args))
 		if err != nil {

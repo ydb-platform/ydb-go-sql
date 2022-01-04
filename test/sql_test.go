@@ -6,7 +6,6 @@ package conn
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -51,6 +50,11 @@ func TestDriverSelect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		if err = res.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
 	if !res.NextResultSet() {
 		t.Fatal("nothing result sets")
 	}
@@ -60,6 +64,9 @@ func TestDriverSelect(t *testing.T) {
 	var v *int
 	if err = res.Scan(&v); err != nil {
 		t.Fatalf("scan failed: %v", err)
+	}
+	if err = res.Err(); err != nil {
+		t.Fatal(err)
 	}
 	if v == nil {
 		t.Fatal("nil value")
@@ -106,7 +113,15 @@ func TestDatabaseSelect(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer func() {
+				if err = rows.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}()
 			log.Printf("rows=%v", rows)
+			if err = rows.Err(); err != nil {
+				t.Fatal(err)
+			}
 		})
 	}
 }
@@ -134,11 +149,8 @@ func TestStatement(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer stmt.Close()
-
-	_, _ = stmt.Exec()
-	_, _ = stmt.Exec()
-
-	_, _ = conn.QueryContext(ctx, "SELECT 42;")
+	// nolint: godox
+	// TODO: other queries
 }
 
 func TestTx(t *testing.T) {
@@ -149,49 +161,51 @@ func TestTx(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
-	// создание обертки над ydb-шной транзакцией
+	// create test table
+	_, err = db.ExecContext(ctx,
+		ydb.SchemeQuery(`CREATE TABLE test_tx (a Uint64, b Utf8, PRIMARY KEY (a, b))`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// make tx
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelSerializable,
 		ReadOnly:  false,
 	})
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
-	defer tx.Rollback()
-	// в этом месте вызывается tx.Execute()
-	res, err := tx.ExecContext(ctx, "INSERT INTO tbl (a, b) VALUES (1, 2);")
-	if err != nil {
-		panic(err)
-	}
-	lastInsertId, err := res.LastInsertId()
-	if err != nil {
-		// nop
-	}
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		// nop
-	}
-	fmt.Printf("insertedID=%d, rowsAffected=%d\n", lastInsertId, rowsAffected)
-	// в этом месте вызывается tx.Execute()
-	rows, err := tx.QueryContext(ctx, "SELECT * FROM tbl WHERE id=$id;", sql.Named("id", 1))
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	// must call tx.Execute
+	_, err = tx.ExecContext(ctx,
+		ydb.DataQuery(`UPSERT INTO test_tx (a, b) VALUES (1, "2");`),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
 	_ = tx.Commit()
-
-	time.Sleep(5 * time.Second)
-
-	{
-		rows, err := db.QueryContext(context.Background(), "SELECT 42")
-		if err != nil {
-			t.Fatal(err)
-		}
-		_ = rows.Close()
-
-		time.Sleep(5 * time.Second)
+	// must call session.Execute
+	rows, err := db.QueryContext(
+		ctx,
+		`
+			DECLARE $a AS Uint64;
+			SELECT * FROM test_tx WHERE a=$a;
+		`,
+		sql.Named("a", ydb.Uint64(1)),
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
-	time.Sleep(5 * time.Second)
+	if err = rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
 }

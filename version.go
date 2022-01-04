@@ -6,6 +6,6 @@ import (
 	"github.com/ydb-platform/ydb-go-sdk/v3"
 )
 
-const Version = "ydb-go-sql/0.0.2"
+const Version = "ydb-go-sql/0.0.3"
 
 const Versions = "[" + Version + "," + ydb.Version + ",grpc/" + grpc.Version + "]"

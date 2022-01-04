@@ -1,8 +1,6 @@
+name: changelog
 on:
   pull_request_target:
-
-name: changelog
-
 jobs:
   changelog:
     name: changelog
@@ -10,10 +8,9 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-
       - name: Changelog updated
         uses: Zomzog/changelog-checker@v1.2.0
         with:
-          fileName: CHANGELOG\.md
+          fileName: CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

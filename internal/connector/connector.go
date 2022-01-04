@@ -94,9 +94,7 @@ func (c *connector) Connect(ctx context.Context) (_ driver.Conn, err error) {
 	if err = c.init(ctx); err != nil {
 		return nil, err
 	}
-	var (
-		s table.ClosableSession
-	)
+	var s table.ClosableSession
 	err = retry.Retry(ctx, true, func(ctx context.Context) (err error) {
 		c.mu.RLock()
 		s, err = c.db.Table().CreateSession(ctx)

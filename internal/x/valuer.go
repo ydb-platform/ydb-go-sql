@@ -2,7 +2,7 @@ package x
 
 import "github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 
-// Valuer based on types.Scanner interface and provides access to value
+// Valuer based on types.Scanner interface for reading raw ydb value and provides access to value
 type Valuer interface {
 	types.Scanner
 

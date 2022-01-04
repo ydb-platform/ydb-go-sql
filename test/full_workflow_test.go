@@ -15,221 +15,27 @@ import (
 
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
-	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
 
 	"github.com/ydb-platform/ydb-go-sql"
 )
 
 func openDB(ctx context.Context) (*sql.DB, error) {
-	var (
-		dtrace trace.Driver
-		ctrace trace.Table
-	)
-	trace.Stub(&dtrace, func(name string, args ...interface{}) {
-		log.Printf("[driver] %s: %+v", name, trace.ClearContext(args))
-	})
-	trace.Stub(&ctrace, func(name string, args ...interface{}) {
-		log.Printf("[client] %s: %+v", name, trace.ClearContext(args))
-	})
-
 	db := sql.OpenDB(ydb.Connector(
 		ydb.WithConnectionString(os.Getenv("YDB_CONNECTION_STRING")),
 		ydb.WithAnonymousCredentials(),
-		ydb.WithTraceDriver(dtrace),
-		ydb.WithTraceTable(ctrace),
+		ydb.WithLogger(
+			ydb.TraceDetailsAll,
+			ydb.WithNamespace("ydb"),
+			ydb.WithOutWriter(os.Stdout),
+			ydb.WithErrWriter(os.Stderr),
+			ydb.WithMinLevel(ydb.WARN),
+		),
 	))
 
 	return db, db.PingContext(ctx)
 }
 
-//func TestQuery(t *testing.T) {
-//	c := ydb.Connector(
-//		ydb.WithConnectionString(os.Getenv("YDB_CONNECTION_STRING")),
-//		ydb.WithDiscoveryInterval(0),
-//		ydb.With(
-//			config.WithGrpcOptions(
-//				grpc.WithChainUnaryInterceptor(func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-//					switch m := testutil.Method(method).Code(); m {
-//					case testutil.TableCreateSession:
-//						r, ok := (reply).(*Ydb_Table.CreateSessionResponse)
-//						if !ok {
-//							t.Fatalf("Unexpected response type %T", reply)
-//						}
-//						result, err := anypb.New(
-//							&Ydb_Table.CreateSessionResult{
-//								SessionId: testutil.SessionID(),
-//							},
-//						)
-//						if err != nil {
-//							return err
-//						}
-//						r.Operation = &Ydb_Operations.Operation{
-//							Status: Ydb.StatusIds_SUCCESS,
-//							Result: result,
-//							Ready:  true,
-//						}
-//						return nil
-//					case testutil.TableExecuteDataQuery:
-//						{
-//							_, ok := (req).(*Ydb_Table.ExecuteDataQueryRequest)
-//							if !ok {
-//								t.Fatalf("Unexpected request type %T", req)
-//							}
-//						}
-//						{
-//							r, ok := (reply).(*Ydb_Table.ExecuteDataQueryResponse)
-//							if !ok {
-//								t.Fatalf("Unexpected response type %T", reply)
-//							}
-//							result, err := anypb.New(
-//								&Ydb_Table.ExecuteQueryResult{
-//									TxMeta: &Ydb_Table.TransactionMeta{
-//										Id: "",
-//									},
-//								},
-//							)
-//							if err != nil {
-//								return err
-//							}
-//							r.Operation = &Ydb_Operations.Operation{
-//								Status: Ydb.StatusIds_SUCCESS,
-//								Result: result,
-//								Ready:  true,
-//							}
-//							return nil
-//						}
-//					case testutil.TablePrepareDataQuery:
-//						{
-//							_, ok := (req).(*Ydb_Table.PrepareDataQueryRequest)
-//							if !ok {
-//								t.Fatalf("Unexpected request type %T", req)
-//							}
-//						}
-//						{
-//							r, ok := (reply).(*Ydb_Table.PrepareDataQueryResponse)
-//							if !ok {
-//								t.Fatalf("Unexpected response type %T", reply)
-//							}
-//							result, err := anypb.New(
-//								&Ydb_Table.PrepareQueryResult{
-//									QueryId: "",
-//								},
-//							)
-//							if err != nil {
-//								return err
-//							}
-//							r.Operation = &Ydb_Operations.Operation{
-//								Status: Ydb.StatusIds_SUCCESS,
-//								Result: result,
-//								Ready:  true,
-//							}
-//							return nil
-//						}
-//					default:
-//						t.Fatalf("Unexpected method %s (request '%T', response '%T')", method, req, reply)
-//					}
-//					return nil
-//				}),
-//				grpc.WithChainStreamInterceptor(func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-//					switch m := testutil.Method(method).Code(); m {
-//					case testutil.TableStreamExecuteScanQuery:
-//						return nil, io.EOF
-//					default:
-//						t.Fatalf("Unexpected method %d", m)
-//					}
-//					return nil, fmt.Errorf("unexpected method %s", method)
-//				}),
-//			),
-//		),
-//		ydb.WithDefaultExecDataQueryOption(),
-//	)
-//
-//	for _, test := range [...]struct {
-//		subName       string
-//		scanQueryMode bool
-//	}{
-//		{
-//			subName:       "Legacy",
-//			scanQueryMode: false,
-//		},
-//		{
-//			subName:       "WithScanQuery",
-//			scanQueryMode: true,
-//		},
-//	} {
-//		t.Run("QueryContext/Conn/"+test.subName, func(t *testing.T) {
-//			db := sql.OpenDB(c)
-//			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-//			defer cancel()
-//			if test.scanQueryMode {
-//				ctx = ydb.WithScanQuery(ctx)
-//			}
-//			rows, err := db.QueryContext(ctx, "SELECT 1")
-//			if err != nil {
-//				t.Fatalf("query failed: %v", err)
-//			}
-//			if rows == nil {
-//				t.Fatal("query failed: nil rows")
-//			}
-//		})
-//		t.Run("QueryContext/STMT/"+test.subName, func(t *testing.T) {
-//			db := sql.OpenDB(c)
-//			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-//			defer cancel()
-//			stmt, err := db.PrepareContext(ctx, "SELECT 1")
-//			if err != nil {
-//				t.Fatalf("prepare failed: %v", err)
-//			}
-//			defer stmt.Close()
-//			if test.scanQueryMode {
-//				ctx = ydb.WithScanQuery(ctx)
-//			}
-//			rows, err := stmt.QueryContext(ctx)
-//			if err != nil {
-//				t.Fatalf("query failed: %v", err)
-//			}
-//			if rows == nil {
-//				t.Fatal("query failed: nil rows")
-//			}
-//		})
-//		t.Run("ExecContext/Conn/"+test.subName, func(t *testing.T) {
-//			db := sql.OpenDB(c)
-//			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-//			defer cancel()
-//			if test.scanQueryMode {
-//				ctx = ydb.WithScanQuery(ctx)
-//			}
-//			rows, err := db.ExecContext(ctx, "SELECT 1")
-//			if err != nil {
-//				t.Fatalf("query failed: %v", err)
-//			}
-//			if rows == nil {
-//				t.Fatal("query failed: nil rows")
-//			}
-//		})
-//		t.Run("ExecContext/STMT/"+test.subName, func(t *testing.T) {
-//			db := sql.OpenDB(c)
-//			ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
-//			defer cancel()
-//			stmt, err := db.PrepareContext(ctx, "SELECT 1")
-//			if err != nil {
-//				t.Fatalf("prepare failed: %v", err)
-//			}
-//			defer stmt.Close()
-//			if test.scanQueryMode {
-//				ctx = ydb.WithScanQuery(ctx)
-//			}
-//			rows, err := stmt.ExecContext(ctx)
-//			if err != nil {
-//				t.Fatalf("stmt exec failed: %v", err)
-//			}
-//			if rows == nil {
-//				t.Fatal("stmt exec failed: nil rows")
-//			}
-//		})
-//	}
-//}
-//
+// nolint: gocyclo
 func TestFullWorkflow(t *testing.T) {
 	params, err := ydb.ConnectionString(os.Getenv("YDB_CONNECTION_STRING"))
 	if err != nil {
@@ -253,13 +59,11 @@ func TestFullWorkflow(t *testing.T) {
 	// create series table
 	{
 		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx),
-			`DROP TABLE series;`,
+			ctx, ydb.SchemeQuery(`DROP TABLE series;`),
 		); err != nil && !ydb.IsOperationErrorSchemeError(err) {
 			panic(err)
 		}
-		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx), `
+		if _, err = db.ExecContext(ctx, ydb.SchemeQuery(`
 			CREATE TABLE series
 			(
 				series_id Uint64,
@@ -269,21 +73,18 @@ func TestFullWorkflow(t *testing.T) {
 				title Utf8,
 				PRIMARY KEY (series_id)
 			);
-		`,
-		); err != nil {
+		`)); err != nil {
 			panic(err)
 		}
 	}
 	// create seasons table
 	{
 		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx),
-			`DROP TABLE seasons;`,
+			ctx, ydb.SchemeQuery(`DROP TABLE seasons;`),
 		); err != nil && !ydb.IsOperationErrorSchemeError(err) {
 			panic(err)
 		}
-		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx), `
+		if _, err = db.ExecContext(ctx, ydb.SchemeQuery(`
 			CREATE TABLE seasons
 			(
 				series_id Uint64,
@@ -293,21 +94,18 @@ func TestFullWorkflow(t *testing.T) {
 				title Utf8,
 				PRIMARY KEY (series_id, season_id)
 			);
-		`,
-		); err != nil {
+		`)); err != nil {
 			panic(err)
 		}
 	}
 	// create episodes table
 	{
 		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx),
-			`DROP TABLE episodes;`,
+			ctx, ydb.SchemeQuery(`DROP TABLE episodes;`),
 		); err != nil && !ydb.IsOperationErrorSchemeError(err) {
 			panic(err)
 		}
-		if _, err = db.ExecContext(
-			ydb.WithSchemeQuery(ctx), `
+		if _, err = db.ExecContext(ctx, ydb.SchemeQuery(`
 			CREATE TABLE episodes
 			(
 				series_id Uint64,
@@ -317,8 +115,7 @@ func TestFullWorkflow(t *testing.T) {
 				title Utf8,
 				PRIMARY KEY (series_id, season_id, episode_id)
 			);
-		`,
-		); err != nil {
+		`)); err != nil {
 			panic(err)
 		}
 	}
@@ -334,9 +131,11 @@ func TestFullWorkflow(t *testing.T) {
 			_ = tx.Rollback()
 		}()
 		// replace/insert over prepared query
-		stmt, err := tx.PrepareContext(ctx, render(fill, templateConfig{
-			TablePathPrefix: params.Database(),
-		}))
+		stmt, err := tx.PrepareContext(ctx, ydb.DataQuery(
+			render(fill, templateConfig{
+				TablePathPrefix: params.Database(),
+			})),
+		)
 		if err != nil {
 			panic(err)
 		}
@@ -356,10 +155,10 @@ func TestFullWorkflow(t *testing.T) {
 		}
 		// check explain
 		row := tx.QueryRowContext(
-			ydb.WithExplain(ctx),
-			render(fill, templateConfig{
+			ctx,
+			ydb.ExplainQuery(render(fill, templateConfig{
 				TablePathPrefix: params.Database(),
-			}),
+			})),
 			sql.Named("seriesData", getSeriesData()),
 			sql.Named("seasonsData", getSeasonsData()),
 			sql.Named("episodesData", getEpisodesData()),
@@ -414,6 +213,11 @@ func TestFullWorkflow(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		defer func() {
+			if err = rows.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}()
 		if !rows.NextResultSet() {
 			panic("no result sets")
 		}
@@ -430,12 +234,15 @@ func TestFullWorkflow(t *testing.T) {
 		}
 		log.Printf("> select_simple_transaction:\n")
 		log.Printf("  > %d %s %s\n", *id, *title, *date)
+		if err = rows.Err(); err != nil {
+			panic(err)
+		}
 	}
 	// select with scan query
 	{
 		rows, err := db.QueryContext(
-			ydb.WithScanQuery(ctx),
-			render(
+			ctx,
+			ydb.ScanQuery(render(
 				template.Must(template.New("").Parse(`
 					PRAGMA TablePathPrefix("{{ .TablePathPrefix }}");
 		
@@ -448,7 +255,7 @@ func TestFullWorkflow(t *testing.T) {
 				templateConfig{
 					TablePathPrefix: params.Database(),
 				},
-			),
+			)),
 			sql.Named("series", types.ListValue(
 				types.Uint64Value(1),
 				types.Uint64Value(10),
@@ -457,6 +264,11 @@ func TestFullWorkflow(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		defer func() {
+			if err = rows.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}()
 		if !rows.NextResultSet() {
 			panic("no result sets")
 		}
@@ -472,6 +284,9 @@ func TestFullWorkflow(t *testing.T) {
 				panic(err)
 			}
 			log.Printf("  > SeriesId: %d, SeasonId: %d, Title: %s, Air date: %s", seriesID, seasonID, title, date)
+		}
+		if err = rows.Err(); err != nil {
+			t.Fatal(err)
 		}
 	}
 }

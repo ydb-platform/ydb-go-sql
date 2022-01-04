@@ -22,7 +22,7 @@ type ro struct {
 }
 
 func (tx *ro) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	switch m := x.QueryMode(ctx); m {
+	switch m := mode.Mode(query); m {
 	case mode.DataQuery:
 		_, res, err := tx.s.Execute(ctx, tx.txc, query, x.ToQueryParams(args))
 		if err != nil {

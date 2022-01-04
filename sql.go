@@ -6,9 +6,7 @@ import (
 	"github.com/ydb-platform/ydb-go-sql/internal/driver"
 )
 
-var (
-	legacyDriver = driver.New()
-)
+var legacyDriver = driver.New()
 
 func init() {
 	sql.Register("ydb", legacyDriver)
